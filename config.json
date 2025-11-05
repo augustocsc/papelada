@@ -1,0 +1,8 @@
+{
+    "normalization_options": {
+                "flat": false,
+                "lowercase": false,
+                "accents": false
+    },
+    "llm_model": "gemini-2.5-flash"
+}
