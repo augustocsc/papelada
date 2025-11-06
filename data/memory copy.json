@@ -1,10 +1,7 @@
-[
-    {
-      "label": "carteira_oab",
-      "rule": {
-        "seccional": "seccional",
-        "categoria": "ocupado"
-      },
-      "pdf_path": "oab_1.pdf"
-    }
-  ]
+{
+      "carteira_oab":{
+          "nome": "^([^\\n]+?)\\n",
+          "categoria": "(ocupado)",
+          "batata": "teste"
+      }
+}

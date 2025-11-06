@@ -49,6 +49,7 @@ class Extractor:
         for field, rule in self.known_rules.items():
             pattern = rule
             match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
+            print(f"{text}: {pattern}")
             if match:
                 extracted[field] = match.group(1).strip()
                 #if returned more than expected

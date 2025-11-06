@@ -29,6 +29,19 @@ def parse_argrs():
         parser.add_argument("--config", "-c", default="config.json", help="Path to config JSON file (default: config.json)")
         return parser.parse_args()
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+def _process(path: Path, cfg_dict: dict) -> tuple:
+    """
+    Worker function for parallel PDF processing. 
+    Must be defined globally for ProcessPoolExecutor to work.
+    """
+    # Assuming extract, clean, and normalize are also globally accessible or imported
+    raw = extract(str(path))
+    cleaned = clean(raw)
+    normalized = normalize(cleaned, cfg_dict.get("normalization_options", cfg_dict))
+    return path.name, {"clean_data": cleaned, "normalized_data": normalized}
+
 def load(pdf_path: str, cfg ) -> dict:
     """
     Loads and processes a the PDF(s) file(s). Checking if the path is a file, folder or multiple files.
@@ -61,22 +74,25 @@ def load(pdf_path: str, cfg ) -> dict:
 
     if not paths:
         raise FileNotFoundError(f"No PDF files found in: {pdf_path}")
-
-    def _process(path: Path) -> dict:
-        raw = extract(str(path))
-        cleaned = clean(raw)
-        normalized = normalize(cleaned, cfg.get("normalization_options", cfg))
-        return path.name, {"clean_data": cleaned, "normalized_data": normalized}
+    if not paths:
+        raise FileNotFoundError(f"No PDF files found in: {pdf_path}")
 
     results = {}
     max_workers = min(32, (os.cpu_count() or 1) + 4)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_process, p): p for p in paths}
+    # Ensure cfg is converted to a pickleable type (like a dict) if it's not already
+    cfg_for_process = cfg.to_dict() if hasattr(cfg, 'to_dict') else dict(cfg) 
+
+    # 3. Use ProcessPoolExecutor (as suggested previously) and submit the global function
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Pass the global _process function and the necessary cfg arguments
+        futures = {executor.submit(_process, p, cfg_for_process): p for p in paths}
+        
         for fut in as_completed(futures):
             try:
                 pdf_key, data = fut.result()
                 results[pdf_key] = data
             except Exception as e:
+                # Error handling for the process
                 raise RuntimeError(f"Error processing {futures[fut]}: {e}") from e
 
     return results
@@ -142,13 +158,14 @@ def main(args) -> int:
         print(f"Error processing PDFs: {e}")
         return 1
         
-        # for pdf in processed_pdfs:
-    #     print(f"PDF Name: {pdf['pdf_path']}")
-    #     print("Clean Data:")
-    #     print(pdf['clean_data'])
-    #     print("Normalized Data:")
-    #     print(pdf['normalized_data'])
-    #     print("-" * 40)
+    for pdf in processed_pdfs:
+        print(f"Processed PDF: {type(pdf)}")
+        # print(f"PDF Name: {pdf['pdf_path']}")
+        # print("Clean Data:")
+        # print(pdf['clean_data'])
+        # print("Normalized Data:")
+        # print(pdf['normalized_data'])
+        # print("-" * 40)
 
 # 3. Now the fun begins
     run(cfg, extr_schema, processed_pdfs)

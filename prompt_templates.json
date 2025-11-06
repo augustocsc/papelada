@@ -1,0 +1,7 @@
+{
+    "long_prompt": 
+    {
+        "prompt": "From this text:\n {clened_text}\n \n Extract this fields:\n {campos_desc}\n",
+        "descrição": ""
+    }
+}

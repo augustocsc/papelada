@@ -1,6 +1,6 @@
 {
       "carteira_oab":{
-          "seccional": "(seccional)",
+          "nome": "^([^\\n]+?)\\n",
           "categoria": "(ocupado)",
           "batata": "teste"
       }
