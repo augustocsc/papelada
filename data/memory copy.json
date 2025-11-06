@@ -1,0 +1,10 @@
+[
+    {
+      "label": "carteira_oab",
+      "rule": {
+        "seccional": "seccional",
+        "categoria": "ocupado"
+      },
+      "pdf_path": "oab_1.pdf"
+    }
+  ]

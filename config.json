@@ -4,5 +4,6 @@
                 "lowercase": false,
                 "accents": false
     },
+    "memory_file": "data/memory.json",
     "llm_model": "gemini-2.5-flash"
 }
