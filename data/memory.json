@@ -1,0 +1,41 @@
+{
+  "tela_sistema": {
+    "valor_parcela": [
+      "Parc\\.\\s*\\n?\\s*([\\d\\.]+,[\\d]{2})\\b"
+    ],
+    "cidade": [
+      "Cidade:\\s*([A-Za-zÀ-ÿ\\-\\s]+)\\s*U\\.F\\."
+    ],
+    "data_base": [
+      "Data Referência:\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
+    ],
+    "data_verncimento": [
+      "12/10/2025"
+    ],
+    "produto": [
+      "Sistema\\s+Saldo\\s+Vencido[\\s\\S]*?\\n[\\s\\S]*?\\b([A-Za-zÀ-ÿ\\s]+?)\\b\\s+[\\d\\.,]+"
+    ],
+    "sistema": [
+      "Vcto mais antigo\\s+Dias atraso\\s+Sistema[\\s\\S]*?\\n[\\s\\S]*?\\b([A-Za-zÀ-ÿ\\s]+?)\\b\\s+[\\d\\.,]+"
+    ]
+  },
+  "carteira_oab": {
+    "inscricao": [
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\b"
+    ],
+    "seccional": [
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\b([A-Z]{2})\\b"
+    ],
+    "situacao": [
+      "Telefone Profissional[\\s\\S]*?\\b([A-ZÀ-Ý\\s]+REGULAR|[A-ZÀ-Ý\\s]+)\\b"
+    ],
+    "nome": [
+      "(?:^|\\n)\\s*([A-ZÀ-Ÿ'\\-\\.\\s]+)\\s*\\n\\s*Inscrição\\s*Seccional\\s*Subseção",
+      "^\\s*([A-ZÁÀÂÃÉÈÊÍÓÔÕÚÜÇ\\s]+)\\s*(?=\\r?\\n\\s*Inscrição)"
+    ],
+    "categoria": [
+      "\\n\\s*([A-ZÀ-Ÿ]+)\\s*\\n\\s*Endereço Profissional",
+      "CONSELHO\\s+SECCIONAL\\s*-\\s*[A-ZÁÀÂÃÉÈÊÍÓÔÕÚÜÇ\\s]+[\\s\\S]*?\\r?\\n\\s*([A-ZÁÀÂÃÉÈÊÍÓÔÕÚÜÇ]+)\\s*(?=\\r?\\n\\s*Endereço Profissional)"
+    ]
+  }
+}

@@ -16,6 +16,11 @@ _________   _...._               _________   _...._           
 
 Este repositório contém a minha solução para o "Take Home Project" da Enter AI Fellowship. O objetivo central era criar uma solução de extração de dados de PDFs que fosse rápida (menos de 10 segundos por requisição), barata (minimizando custos de LLM), e precisa (acima de 80%), sem conhecer os *labels* ou *schemas* de extração antecipadamente.
 
+## Atualizações
+
+> A arquitetura **"Smart"** ficou mais rápida! Adicionei um sistema assíncrono de **Geração de Regex em Segundo Plano** que desacopla a extração de dados da fase de aprendizado. Agora, a aplicação retorna os dados extraídos quase instantaneamente, enquanto as custosas chamadas de LLM para criação e validação de novas regras de Regex são agendadas para rodar de forma não-bloqueante. Além disso, a gestão de memória foi reforçada com um sistema de **`asyncio.Lock`**, garantindo que as regras aprendidas sejam salvas de forma concorrente e segura em `memory.json` por múltiplos processos, eliminando a perda de conhecimento e aumentando a robustez do aprendizado incremental.
+
+
 ## A Solução: Abordagem Híbrida "Smart"
 
 Para atender aos requisitos conflitantes de velocidade, custo e precisão, desenvolvi uma arquitetura híbrida que "aprende" com o tempo. A estratégia principal é evitar chamadas ao LLM sempre que possível, tratando-as como um último recurso para aprendizado, e não como a principal ferramenta de extração.

@@ -38,7 +38,6 @@ def _process(path: Path, cfg_dict: dict) -> tuple:
     Worker function for parallel PDF processing. 
     Must be defined globally for ProcessPoolExecutor to work.
     """
-    # Assuming extract, clean, and normalize are also globally accessible or imported
     raw = extract(str(path))
     cleaned = clean(raw)
     normalized = normalize(cleaned, cfg_dict.get("normalization_options", cfg_dict))
@@ -46,15 +45,10 @@ def _process(path: Path, cfg_dict: dict) -> tuple:
 
 def load(pdf_path: str, cfg ) -> dict:
     """
-    Loads and processes a the PDF(s) file(s). Checking if the path is a file, folder or multiple files.
-    Parallel processing is used to speed up the operation.
-
-    Args:
-        pdf_path: Path to the PDF file, folder or list of files.
-    Returns:
-        A dictionary with the PDF name, clean data, and normalized data.
+    Loads and processes a the PDF(s) file(s).
+    ...
     """
-    # Normalize pdf_path to a list of Path objects
+    # ... (código inalterado) ...
     if isinstance(pdf_path, (list, tuple)):
         paths = []
         for p in pdf_path:
@@ -81,12 +75,9 @@ def load(pdf_path: str, cfg ) -> dict:
 
     results = {}
     max_workers = min(32, (os.cpu_count() or 1) + 4)
-    # Ensure cfg is converted to a pickleable type (like a dict) if it's not already
     cfg_for_process = cfg.to_dict() if hasattr(cfg, 'to_dict') else dict(cfg) 
 
-    # 3. Use ProcessPoolExecutor (as suggested previously) and submit the global function
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Pass the global _process function and the necessary cfg arguments
         futures = {executor.submit(_process, p, cfg_for_process): p for p in paths}
         
         for fut in as_completed(futures):
@@ -94,32 +85,55 @@ def load(pdf_path: str, cfg ) -> dict:
                 pdf_key, data = fut.result()
                 results[pdf_key] = data
             except Exception as e:
-                # Error handling for the process
                 raise RuntimeError(f"Error processing {futures[fut]}: {e}") from e
 
     return results
+
+# --- NOVO: Função load_memory (movida do extractor.py) ---
+def load_memory(path: Path) -> dict:
+    """Carrega com segurança o arquivo de memória, retornando {} em caso de falha."""
+    if not path.exists():
+        print(f"Memory file not found at {path}. Initializing empty memory.")
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            if not content:
+                return {}
+            memory_data = json.loads(content)
+            return memory_data
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error loading memory file {path}: {e}. Initializing empty memory.")
+        return {}
     
-async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict = None): # Make run function async
+# --- run MODIFICADO ---
+async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict): # Aceita 'memory'
     """
-    Runs the extraction process on the processed PDFs using the provided configuration and extraction schema.
-    First it checks the memory to find if there are rules already processed for the given label.
-    Args:
-        cfg: Configuration dictionary.
-        extr_schema: Extraction schema dictionary.
-        processed_pdfs: List of processed PDF data dictionaries.
+    Runs the extraction process...
     """
     
     from extractor import Extractor
     all_results = []
+    background_tasks = [] 
+    
+    # --- MODIFICADO: Cria o Lock aqui ---
+    memory_lock = asyncio.Lock()
+    # --- FIM DA MODIFICAÇÃO ---
+
     total_run_start_time = time.perf_counter()
     for schema in extr_schema:
         print(f"Processing PDF: {schema['pdf_path']}")
         pdf_processing_start_time = time.perf_counter()
         
-        extr_ = Extractor(cfg, schema)
+        # --- MODIFICADO: Passa a memória compartilhada e o lock ---
+        extr_ = Extractor(cfg, schema, memory, memory_lock)
+        # --- FIM DA MODIFICAÇÃO ---
         
-        result = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) # Await the extract call
+        result, task = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) 
         
+        if task:
+            background_tasks.append(task) 
+
         print("Extracted Data:")
         print(json.dumps(result, indent=2, ensure_ascii=False))
         all_results.append({"label": schema["label"], "pdf_path": schema["pdf_path"], "extracted_data": result})
@@ -128,29 +142,37 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict =
 
     total_run_end_time = time.perf_counter()
     print(f"Total extraction process completed in {total_run_end_time - total_run_start_time:.2f} seconds.")
+
+    if background_tasks:
+        print(f"\nWaiting for {len(background_tasks)} background regex generation tasks to complete...")
+        await asyncio.gather(*background_tasks)
+        print("All background tasks finished.")
+
     return all_results
 
-async def main(args) -> int: # Make main function async
-#1. Loading configuration    
+# --- main MODIFICADO ---
+async def main(args) -> int:
+    memory_path = None 
     try:
-        # Load main config
         cfg = load_json(args.config)
-
-        # Load the JSON config file with extraction schema
         json_path = args.extraction_schema
         extr_schema = load_json(json_path)
         
-        # Create memory json file if not exists from path in config
         memory_path = Path(cfg.get("memory_file"))
         
+        # --- MODIFICADO: Carrega a memória ANTES de tudo ---
+        memory_data = load_memory(memory_path)
+        # Tenta criar o diretório pai, se necessário
         try:
             memory_path.parent.mkdir(parents=True, exist_ok=True)
             if not memory_path.exists():
-                memory_path.write_text(json.dumps({"processed_files": []}, indent=2), encoding="utf-8")
+                # Se o arquivo não existia, salva a memória vazia (ou o que load_memory leu)
+                with open(memory_path, 'w', encoding='utf-8') as f:
+                     json.dump(memory_data, f, indent=2)
         except Exception as e:
             print(f"Warning: unable to create cache file {memory_path}: {e}")
+        # --- FIM DA MODIFICAÇÃO ---
 
-        # Create results directory if it doesn't exist
         results_dir = Path("results")
         results_dir.mkdir(parents=True, exist_ok=True)
         output_file_path = results_dir / cfg.get("output_filename", "output.json")
@@ -159,17 +181,16 @@ async def main(args) -> int: # Make main function async
         print(f"Error: {e}")
         return 1
 
-# 2. Load and process PDFs
     try:
         processed_pdfs = load(args.pdf_path, cfg)
     except Exception as e:
         print(f"Error processing PDFs: {e}")
         return 1
     
-# 3. Now the fun begins
-    all_extraction_results = await run(cfg, extr_schema, processed_pdfs) # Await the run call
+    # --- MODIFICADO: Passa memory_data para o run ---
+    all_extraction_results = await run(cfg, extr_schema, processed_pdfs, memory_data)
+    # --- FIM DA MODIFICAÇÃO ---
 
-    # 4. Save results to output file
     if all_extraction_results:
         try:
             with open(output_file_path, 'w', encoding='utf-8') as f:
@@ -178,16 +199,11 @@ async def main(args) -> int: # Make main function async
         except Exception as e:
             print(f"Error saving results to output file {output_file_path}: {e}")
 
+    # Não precisamos mais da limpeza de memória aqui, pois o
+    # arquivo agora é persistente e gerenciado corretamente.
+            
     return 0
 
 if __name__ == "__main__":
     args = parse_argrs()
-    sys.exit(asyncio.run(main(args))) # Use asyncio.run to execute the async main function
-
-    # Clean up memory file
-    if memory_path.exists():
-        try:
-            os.remove(memory_path)
-            print(f"Memory file {memory_path} deleted.")
-        except Exception as e:
-            print(f"Error deleting memory file {memory_path}: {e}")
+    sys.exit(asyncio.run(main(args)))
