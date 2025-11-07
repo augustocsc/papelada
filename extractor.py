@@ -3,27 +3,26 @@ import time
 import json
 import re
 import os # Importe o módulo os para acessar as variáveis de ambiente
-from typing import Optional # Importe Optional para type hinting
-from dotenv import load_dotenv # Importe a função load_dotenv
-from google import genai
-from google.genai import Client, types
-from google.genai.errors import APIError
-
-
+import dotenv
+from dotenv import load_dotenv
+from openai import AsyncOpenAI, OpenAIError
+from llm import LLMExtractor
+# Carrega variáveis de ambiente (.env)
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
 
-try:
-    client = Client(api_key=api_key) 
-    print("Client initialized successfully")
-except Exception as e:
-    print(f"Error initializing client: {e}")
+# Verifica se a chave da OpenAI está disponível
+if not os.getenv("OPENAI_API_KEY"):
+    print("⚠️ AVISO: OPENAI_API_KEY não encontrada nas variáveis de ambiente.")
+client = AsyncOpenAI()
 
 
 class Extractor:
     def __init__(self, config: dict, file_schema: dict):
-        
+        self.cfg = config
+
+        # Creating a list of fields to extract
         self.extracted_data = {key: 'null' for key in file_schema["extraction_schema"]}
+        self.extraction_schema = file_schema["extraction_schema"]
         
         self.memory = self.load_memory(config.get("memory_file"))
         self.rules = {}
@@ -44,24 +43,32 @@ class Extractor:
             print(f"Memory file not found at {path}. Initializing empty memory.")
             return {}
 
-    def apply_known_rules(self, text: str) -> dict:
+    def _apply(self, text: str, rules: dict) -> dict:
         extracted = {}
-        for field, rule in self.known_rules.items():
+        for field, rule in rules.items():
             pattern = rule
             match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
             print(f"{text}: {pattern}")
             if match:
                 extracted[field] = match.group(1).strip()
                 #if returned more than expected
-
             else:
                 extracted[field] = 'null'
         return extracted
     
     def extract(self, text: str) -> dict:
+
         if self.known_rules:
-            self.extracted_data = self.apply_known_rules(text)
-        print(f"Extracted Data: {self.extracted_data}")
+            self.extracted_data = self._apply(text, self.known_rules)
+        
+        if 'null' in self.extracted_data.values():
+            # remove filds already extracted
+            fields_to_extract = [k for k, v in self.extracted_data.items() if v == 'null']
+            llm = LLMExtractor(self.cfg["llm"], fields_to_extract, text, client=self.client)
+            
+
+            pass
+        
 
         
         return self.extracted_data

@@ -12,7 +12,8 @@ import json
 import argparse
 import os
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import time
 
 # Import from our pipeline module
 from pdf_pipeline import (
@@ -29,7 +30,6 @@ def parse_argrs():
         parser.add_argument("--config", "-c", default="config.json", help="Path to config JSON file (default: config.json)")
         return parser.parse_args()
 
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 def _process(path: Path, cfg_dict: dict) -> tuple:
     """
@@ -112,6 +112,7 @@ def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict = None)
             print(f"Processing PDF: {schema['pdf_path']}")
             extr_ = Extractor(cfg, schema)
             result = extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data'])
+            
             print("Extracted Data:")
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
@@ -157,16 +158,7 @@ def main(args) -> int:
     except Exception as e:
         print(f"Error processing PDFs: {e}")
         return 1
-        
-    for pdf in processed_pdfs:
-        print(f"Processed PDF: {type(pdf)}")
-        # print(f"PDF Name: {pdf['pdf_path']}")
-        # print("Clean Data:")
-        # print(pdf['clean_data'])
-        # print("Normalized Data:")
-        # print(pdf['normalized_data'])
-        # print("-" * 40)
-
+    
 # 3. Now the fun begins
     run(cfg, extr_schema, processed_pdfs)
     return 0
