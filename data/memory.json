@@ -1,7 +1,1 @@
-{
-      "carteira_oab":{
-          "nome": "^([^\\n]+?)\\n",
-          "categoria": "(ocupado)",
-          "batata": "teste"
-      }
-}
+{}

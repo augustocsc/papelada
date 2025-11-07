@@ -119,8 +119,6 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict =
         print("Extracted Data:")
         print(json.dumps(result, indent=2, ensure_ascii=False))
 
-            
-
             # Find the processed PDF data
 
     

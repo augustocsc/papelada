@@ -7,7 +7,7 @@ INSTRUÇÕES:
 1. Analise o `DOCUMENT_TEXT` e o `SCHEMA`.
 2. Para cada campo no schema, encontre o valor correspondente no texto, Ele nem sempre estará na sequência do rótulo e nem sempre o rotulo estará presente.
 3. Se tiver certeza de que um campo não esta presente no texto, retorne `null`.
-4. Retorne APENAS um JSON válido com os dados extraídos e o nível de confiança: campo: {{\"dado\":"valor extraido", \"confiança\":\"a confiança do valor (low, medium, high)\"}}.
+4. Retorne APENAS um JSON válido com os dados extraídos e o nível de confiança: campo: {{\"dado\":"valor extraido", \"confidence\":\"a confiança do valor (low, medium, high)\"}}.
 5. Cuidado para não incluir texto adicional ou rótulos.
 ---
 **INÍCIO DA REQUISIÇÃO**

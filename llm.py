@@ -33,9 +33,8 @@ class LLMExtractor:
         
         with open(cfg['prompt_file'], "r", encoding="utf-8") as f:
             prompts_data = json.load(f) 
-            print(f"data_extr_['prompt'] = {cfg['prompt_file']}")
+            
             self.data_extr_['prompt'] = prompts_data.get(self.data_extr_['prompt'])
-            print(f"data_extr_['prompt'] = {cfg['prompt_file']}")
             self.regex_extr_['prompt'] = prompts_data.get(self.regex_extr_['prompt'])
 
         # Map reasoning for regex and data 
