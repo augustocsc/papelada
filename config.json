@@ -6,6 +6,7 @@
     },
     "memory_file": "data/memory.json",
     "mode": "smart",
+    "output_filename":"teste.json",
     "llm": {        
         "model_name": "gpt-5-mini",
         "prompt_file": "prompt_templates.json",

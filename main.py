@@ -15,6 +15,7 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
 import asyncio
+from datetime import datetime
 
 # Import from our pipeline module
 from pdf_pipeline import (
@@ -108,9 +109,12 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict =
         processed_pdfs: List of processed PDF data dictionaries.
     """
     
-    from extractor import Extractor #generate_regex_json, extract_data_with_regex, 
+    from extractor import Extractor
+    all_results = []
+    total_run_start_time = time.perf_counter()
     for schema in extr_schema:
         print(f"Processing PDF: {schema['pdf_path']}")
+        pdf_processing_start_time = time.perf_counter()
         
         extr_ = Extractor(cfg, schema)
         
@@ -118,12 +122,17 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict =
         
         print("Extracted Data:")
         print(json.dumps(result, indent=2, ensure_ascii=False))
+        all_results.append({"label": schema["label"], "pdf_path": schema["pdf_path"], "extracted_data": result})
+        pdf_processing_end_time = time.perf_counter()
+        print(f"Finished processing {schema['pdf_path']} in {pdf_processing_end_time - pdf_processing_start_time:.2f} seconds.\n")
 
             # Find the processed PDF data
 
     
 
             
+    total_run_end_time = time.perf_counter()
+    print(f"Total extraction process completed in {total_run_end_time - total_run_start_time:.2f} seconds.")
 async def main(args) -> int: # Make main function async
 #1. Loading configuration    
     try:

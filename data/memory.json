@@ -1,0 +1,43 @@
+{
+  "carteira_oab": {
+    "nome": [
+      "\\b([A-ZÀ-Ý'\\s\\.]+)\\b\\s*\\n"
+    ],
+    "inscricao": [
+      "Inscrição\\s*[\\s\\S]*?\\b([\\d]+)\\b"
+    ],
+    "seccional": [
+      "Inscrição\\s*[\\s\\S]*?\\b([A-Z]{2})\\b\\s*CONSELHO"
+    ],
+    "categoria": [
+      "\\b([A-ZÀ-Ý]+)\\b\\s*\\n\\s*Endereço Profissional",
+      "Inscrição[\\s\\S]*?\\n\\s*([A-Za-zÀ-ÿ]+)\\b"
+    ],
+    "situacao": [
+      "Telefone Profissional\\s*[\\s\\S]*?\\b([A-ZÀ-Ý\\s]+)\\b\\s*$"
+    ],
+    "subsecao": [
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+\\s*[A-Z]{2})"
+    ]
+  },
+  "tela_sistema": {
+    "data_base": [
+      "Data Referência:\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
+    ],
+    "data_verncimento": [
+      "Seleção de parcelas:[\\s\\S]*?([\\d]{2}/[\\d]{2}/[\\d]{4})"
+    ],
+    "valor_parcela": [
+      "VIr\\. Parc\\.\\s*([\\d\\.]+,[\\d]{2})"
+    ],
+    "cidade": [
+      "Cidade:\\s*([A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç\\-\\s]+)(?:\\s+U\\.F\\.:|$)"
+    ],
+    "produto": [
+      "Saldo\\s+Vencido[\\s\\S]*?\\s([A-Za-zÀ-ÖØ-öø-ÿ]+)\\s[\\d.,]+\\s[\\d.,]+"
+    ],
+    "sistema": [
+      "Vcto\\s+mais\\s+antigo[\\s\\S]*?\\d{2}/\\d{2}/\\d{4}\\s+\\d+\\s+([A-Za-zÀ-ÖØ-öø-ÿ]+)\\s[\\d.,]+"
+    ]
+  }
+}

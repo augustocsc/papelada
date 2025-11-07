@@ -75,12 +75,17 @@ class Extractor:
                 self.extracted_data[field] = 'null'
         return self.extracted_data
     
-    async def extract(self, text: str) -> dict: # Changed to async def
+    async def extract(self, text: str) -> dict:
+        start_time = time.perf_counter()
+        print(f"  Stage: Applying known rules for {self.label}")
 
         if self.known_rules:
             self.extracted_data = self._apply(text, self.known_rules)
 
         if 'null' in self.extracted_data.values():
+            end_known_rules_time = time.perf_counter()
+            print(f"  Stage: Applying known rules completed in {end_known_rules_time - start_time:.2f} seconds.")
+            print(f"  Stage: Extracting data with LLM for {self.label}")
             # remove filds already extracted
             fields_to_extract = [k for k, v in self.extracted_data.items() if v == 'null']
             self.extraction_schema = {k: self.extraction_schema[k] for k in fields_to_extract if k in self.extraction_schema}
@@ -89,10 +94,9 @@ class Extractor:
             
             # Await the coroutine to get its result
             llm_extracted_data = await self.llm.extract_data_json()
-            print(json.dumps(llm_extracted_data["json_response"], indent=2, ensure_ascii=False))
-            extract_rules = {}
-            print(f"extract rules: {json.dumps(self.extraction_schema, indent=2, ensure_ascii=False)}")
-            
+            end_llm_data_time = time.perf_counter()
+            print(f"  Stage: LLM data extraction completed in {end_llm_data_time - end_known_rules_time:.2f} seconds.")
+        
             
             if "json_response" in llm_extracted_data and self.cfg["mode"] == "smart":
                 for field, data_obj in llm_extracted_data["json_response"].items():
@@ -106,27 +110,71 @@ class Extractor:
                         else:
                             del self.extraction_schema[field]
                         
-                print(f"extract rules: {json.dumps(self.extraction_schema, indent=2, ensure_ascii=False)}")
+                print(f"  Stage: Generating and validating regex rules for {self.label}")
                 llm_extracted_rules = await self.llm.generate_regex_json()
-                print(f"{json.dumps(llm_extracted_rules['json_response'], indent=2, ensure_ascii=False)}")
-
+                end_llm_regex_time = time.perf_counter()
+                print(f"  Stage: LLM regex generation completed in {end_llm_regex_time - end_llm_data_time:.2f} seconds.")
+                
                 if llm_extracted_rules and "json_response" in llm_extracted_rules:
                     label = self.label
                     if label not in self.memory:
                         self.memory[label] = {}
                     
                     for field, rule in llm_extracted_rules["json_response"].items():
-                        if field in self.memory[label]:
-                            if isinstance(self.memory[label][field], list):
-                                self.memory[label][field].append(rule["regex"])
-                            else:
-                                # If it's not a list, create one with the existing and new rule
-                                self.memory[label][field] = [self.memory[label][field], rule['regex']]
-                        else:
-                            # If the field doesn't exist, create a new list with the rule
-                            self.memory[label][field] = [rule["regex"]]
-                    
-                self._save_memory(self.cfg.get("memory_file"))
+                        # MODIFICATION: Validate the regex before saving
+                        new_regex = rule.get("regex")
+                        # Get the expected value from the schema (which was set earlier)
+                        expected_value = self.extraction_schema.get(field, {}).get("ref")
 
-                   
+                        is_valid_rule = False
+                        
+                        if not new_regex or not expected_value:
+                            # print(f"⚠️  Skipping regex for field '{field}': Missing regex or expected value.")
+                            continue
+
+                        try:
+                            match = re.search(new_regex, text, re.MULTILINE | re.DOTALL)
+                            extracted_value = None
+                            if match:
+                                if match.groups():
+                                    group_content = match.group(1)
+                                else:
+                                    group_content = match.group(0)
+                                
+                                if group_content is not None:
+                                    extracted_value = group_content.strip()
+
+                            # Check if the extracted value matches the expected value
+                            if extracted_value and extracted_value == expected_value:
+                                is_valid_rule = True
+                            # else:
+                                # print(f"⚠️  Regex validation failed for field '{field}'.")
+                                # print(f"   Regex: {new_regex}")
+                                # print(f"   Expected: '{expected_value}'")
+                                # print(f"   Got: '{extracted_value}'")
+
+                        except re.error as e:
+                            # print(f"⚠️  Invalid regex syntax for field '{field}': {new_regex}. Error: {e}")
+                            pass
+                        
+                        # Only save the rule if it's valid
+                        if is_valid_rule:
+                            # print(f"✅  New valid regex for '{field}' will be saved.")
+                            if field in self.memory[label]:
+                                if isinstance(self.memory[label][field], list):
+                                    # Avoid adding duplicates
+                                    if new_regex not in self.memory[label][field]:
+                                        self.memory[label][field].append(new_regex)
+                                else:
+                                    # If it's not a list, create one with the existing and new rule
+                                    if self.memory[label][field] != new_regex:
+                                        self.memory[label][field] = [self.memory[label][field], new_regex]
+                            else:
+                                # If the field doesn't exist, create a new list with the rule
+                                self.memory[label][field] = [new_regex]
+                        # ELSE: As requested, "don't save it"
+                    
+                    self._save_memory(self.cfg.get("memory_file"))
+
+                    
         return self.extracted_data
