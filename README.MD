@@ -96,3 +96,24 @@ A solução é dividida nos seguintes componentes principais:
     O "caminho feliz" (onde todas as regras estão em memória) é extremamente rápido, pois depende apenas de `re.search`. O "caminho frio" (primeira execução) está sujeito à latência do LLM, mas é um custo pago apenas uma vez por *label*.
 * **Lidar com Variabilidade de Layout:**
     O prompt de geração de regex (`pt_data_long_prompt_trust_reasoning`) é especificamente focado em encontrar âncoras de texto (rótulos) e padrões generalistas, em vez de depender de posições fixas, permitindo que a extração funcione mesmo que o layout mude.
+
+## Comentários Finais e Lições Aprendidas
+
+Fiquei muito surpreso com o desafio para o Fellowship. De fato, como é dito no enunciado, OCR virou commodity e isso faz novos produtos surgirem a partir disso. Como Filipe comentou no QA, esse problema poderia ser resolvido apenas passando os dados e o comando para um LLM. De fato, o GPT-5 mini sozinho funciona melhor do que todas as tentativas que fiz para gerar uma expressão regular confiável e replicável em outros documentos.
+
+Infelizmente meu "extra mile" não vai aparecer nos commits do projeto, porque fui muleque e gastei muito tempo brincando com a LLM. Só que a LLM errada. Para não correr o risco de gastar crédito à toa, comecei o projeto utilizando o Gemini, um modelo compatível com o do projeto. Depois de alguns ajustes ele estava me respondendo super bem e me senti confiante em avançar com o projeto.
+
+Levantei toda a estrutura, escrevi alguns scripts para limpeza e normalização dos dados (o que acabou não sendo tão necessário). Troquei uma ideia com Gemini e Chatgpt pedindo para que eles pensassem com carinho em uma solução e ao perceber que eles não conseguiriam sugerir nada melhor do que eu pensei, comecei a migração.
+
+Na verdade tentei manter um sistema que suportasse mais de uma família de LLM. Utilizando o LLMLite tentei criar um sistema agnóstico ao modelo, porém já estava com o tempo curto e os prompts que eu havia validado estavam com uma performance péssima. Peguei o código e pedi para o Gemini reescrever utilizando a API da OpenAI e mais surpresas. A performance do gpt para gerar código era péssima.
+
+Depois de ajustar os dois prompts principais (para extração dos dados e criação da regex), estava praticamente sem tempo para polir a aplicação corretamente. Então, não, esse não é o melhor projeto da minha vida, mas aprendi e me diverti muito. Por mais que a interface não tenha ficado legal, eu sei que a performance pode melhorar muito só de estruturar o fluxo de execução.
+
+Ouso dizer que para um caso de uso real essa aplicação pode realmente ser eficiente, desde que se abra algumas brechas nos requisitos como:
+
+* Remanejar a ordem de execução: já que desde o começo pensei no projeto linearmente. Poder reordenar a ordem para processar primeiro documentos com mais campos que se repetem e processar labels em paralelo ajudaria na velocidade.
+
+* Melhorar o pipeline de geração de regex: essa parte é a mais instável e que pode prejudicar o meu resultado, pois para economizar tokens tentei uma solução mais direta, não gastando muito tempo na geração.
+
+
+Continuarei trabalhando no projeto, pois achei um desafio muito legal. Então se você é um avaliador, não me odeie por ter outros commits pós a data :D
