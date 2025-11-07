@@ -70,18 +70,37 @@ class LLMExtractor:
              self.data_extr_["temperature"] = "high"
 
     def _build_prompt(self, task: dict) -> str:
+
         if task["task"] == "data":
-            return self.data_extr_['prompt']['prompt'].format(
+            try:
+                with open(self.data_extr_['prompt']['prompt'], "r", encoding="utf-8") as f:
+                    prompt_content = f.read()
+            except FileNotFoundError:
+                raise FileNotFoundError(f"Prompt file not found: {self.data_extr_['prompt']['prompt']}")
+            except Exception as e:
+                raise Exception(f"Error reading prompt file: {e}")
+
+            return prompt_content.format(
                 schema=self.campos_a_extrair,
                 text=self.text_to_analyze
             )
         elif task["task"] == "regex":
-            return self.regex_extr_['prompt']['prompt'].format(
+            try:
+                with open(self.regex_extr_['prompt']['prompt'], "r", encoding="utf-8") as f:
+                    prompt_content = f.read()
+            except FileNotFoundError:
+                raise FileNotFoundError(f"Prompt file not found: {self.regex_extr_['prompt']['prompt']}")
+            except Exception as e:
+                raise Exception(f"Error reading prompt file: {e}")
+            
+            return prompt_content.format(
                 schema = self.campos_a_extrair,
                 text=self.text_to_analyze
             )
         else:
             raise ValueError(f"Unknown task type: {task['task']}")
+
+
     async def generate_regex_json(self) -> dict:
         """Chama o LLM usando o cliente nativo da OpenAI para gerar a lista JSON."""
         
