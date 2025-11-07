@@ -61,7 +61,7 @@ A solução é dividida nos seguintes componentes principais:
     ```
 
 2.  **Configuração:**
-    * Renomeie `.env.txt` para `.env`.
+    * Crie um arquivo para `.env`.
     * Adicione sua chave da OpenAI ao arquivo `.env`:
         ```
         OPENAI_API_KEY="sk-..."
