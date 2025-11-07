@@ -28,12 +28,14 @@ class LLMExtractor:
         self.text_to_analyze = text_to_analyze
         
         #Load prompts and configs for data extraction and regex generation
-        self.data_extr_ = cfg.get("data_extr_", {})
-        self.regex_extr_ = cfg.get("regex_extr_", {})
+        self.data_extr_ = cfg.get("data_extr_", {}).copy()
+        self.regex_extr_ = cfg.get("regex_extr_", {}).copy()
         
         with open(cfg['prompt_file'], "r", encoding="utf-8") as f:
             prompts_data = json.load(f) 
+            print(f"data_extr_['prompt'] = {cfg['prompt_file']}")
             self.data_extr_['prompt'] = prompts_data.get(self.data_extr_['prompt'])
+            print(f"data_extr_['prompt'] = {cfg['prompt_file']}")
             self.regex_extr_['prompt'] = prompts_data.get(self.regex_extr_['prompt'])
 
         # Map reasoning for regex and data 

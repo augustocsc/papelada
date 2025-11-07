@@ -110,14 +110,16 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict =
     
     from extractor import Extractor #generate_regex_json, extract_data_with_regex, 
     for schema in extr_schema:
-            print(f"Processing PDF: {schema['pdf_path']}")
-            extr_ = Extractor(cfg, schema)
-            result = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) # Await the extract call
+        print(f"Processing PDF: {schema['pdf_path']}")
+        
+        extr_ = Extractor(cfg, schema)
+        
+        result = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) # Await the extract call
+        
+        print("Extracted Data:")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
-            print("Extracted Data:")
-            print(json.dumps(result, indent=2, ensure_ascii=False))
-
-            return 
+            
 
             # Find the processed PDF data
 
