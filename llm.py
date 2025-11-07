@@ -1,12 +1,8 @@
 import asyncio
 import time
 import json
-import re
-import os
-from dotenv import load_dotenv
-
 # --- 1. Importações e Configuração de Base ---
-from openai import AsyncOpenAI, OpenAIError
+from openai import OpenAIError
 
 class LLMExtractor:
     """
@@ -90,7 +86,7 @@ class LLMExtractor:
         else:
             raise ValueError(f"Unknown task type: {task['task']}")
 
-    # Timeout de 20 segundos para todas as chamadas
+    # Timeout todas as chamadas
     LLM_TIMEOUT = 20.0 
 
     async def generate_regex_json(self) -> dict:
