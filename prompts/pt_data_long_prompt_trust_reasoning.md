@@ -29,6 +29,7 @@ INSTRUÇÕES DE PENSAMENTO (Obrigatório):
     * Adicione o limite (se houver).
 **IMPORTANTE** nem sempre o valor estará depois do rótulo, para cada campo, analise o contexto
 A regex gerada **NUNCA** deve conter o ref_value de NENHUM campo do schema, seja no grupo de captura ou como uma âncora. (Isso teria impedido o erro de subsecao)
+**CUIDADO COM ACENTOS**
 
 FORMATO DE SAÍDA (JSON):
 Retorne um ÚNICO objeto JSON que contenha CHAVES para CADA campo definido no FIELD_SCHEMA. O formato é o mesmo do exemplo abaixo.

@@ -62,7 +62,10 @@ class Extractor:
                 match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
 
                 if match:
-                    group_content = match.group(1)
+                    if match.groups():
+                        group_content = match.group(1)
+                    else:
+                        group_content = match.group(0)
                     if group_content is not None:
                         self.extracted_data[field] = group_content.strip()
                         match_found = True
@@ -107,7 +110,7 @@ class Extractor:
                 llm_extracted_rules = await self.llm.generate_regex_json()
                 print(f"{json.dumps(llm_extracted_rules['json_response'], indent=2, ensure_ascii=False)}")
 
-                if llm_extracted_rules and "json_response" in llm_extracted_rules and extract_rules:
+                if llm_extracted_rules and "json_response" in llm_extracted_rules:
                     label = self.label
                     if label not in self.memory:
                         self.memory[label] = {}
