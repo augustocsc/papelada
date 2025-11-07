@@ -126,13 +126,10 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict =
         pdf_processing_end_time = time.perf_counter()
         print(f"Finished processing {schema['pdf_path']} in {pdf_processing_end_time - pdf_processing_start_time:.2f} seconds.\n")
 
-            # Find the processed PDF data
-
-    
-
-            
     total_run_end_time = time.perf_counter()
     print(f"Total extraction process completed in {total_run_end_time - total_run_start_time:.2f} seconds.")
+    return all_results
+
 async def main(args) -> int: # Make main function async
 #1. Loading configuration    
     try:
@@ -153,6 +150,11 @@ async def main(args) -> int: # Make main function async
         except Exception as e:
             print(f"Warning: unable to create cache file {memory_path}: {e}")
 
+        # Create results directory if it doesn't exist
+        results_dir = Path("results")
+        results_dir.mkdir(parents=True, exist_ok=True)
+        output_file_path = results_dir / cfg.get("output_filename", "output.json")
+
     except FileNotFoundError as e:
         print(f"Error: {e}")
         return 1
@@ -165,9 +167,27 @@ async def main(args) -> int: # Make main function async
         return 1
     
 # 3. Now the fun begins
-    await run(cfg, extr_schema, processed_pdfs) # Await the run call
+    all_extraction_results = await run(cfg, extr_schema, processed_pdfs) # Await the run call
+
+    # 4. Save results to output file
+    if all_extraction_results:
+        try:
+            with open(output_file_path, 'w', encoding='utf-8') as f:
+                json.dump(all_extraction_results, f, indent=2, ensure_ascii=False)
+                print(f"Extraction results saved to {output_file_path}")
+        except Exception as e:
+            print(f"Error saving results to output file {output_file_path}: {e}")
+
     return 0
 
 if __name__ == "__main__":
     args = parse_argrs()
     sys.exit(asyncio.run(main(args))) # Use asyncio.run to execute the async main function
+
+    # Clean up memory file
+    if memory_path.exists():
+        try:
+            os.remove(memory_path)
+            print(f"Memory file {memory_path} deleted.")
+        except Exception as e:
+            print(f"Error deleting memory file {memory_path}: {e}")
