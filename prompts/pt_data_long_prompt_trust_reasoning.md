@@ -7,6 +7,7 @@ Gerar uma expressão regular Python robusta capaz de extrair o valor de um campo
 INPUTS:
 DOCUMENT_TEXT: O texto completo extraído do documento.
 FIELD_SCHEMA: Um objeto JSON contendo as informações do campo a ser extraído e o valor esperado.
+FAILED_REGEXES: Uma lista de padrões Regex que FALHARAM anteriormente para este campo. Você DEVE evitar repeti-los ou usar padrões similares.
 
 REGRAS:
 1.  **Âncoras (Início):** A regex DEVE usar texto-âncora fixo (rótulos) que aparece antes do valor.
@@ -50,7 +51,9 @@ Exemplo de Saída para FIELD_NAME = "inscricao":
 
 {schema}
 
+`FAILED_REGEXES_FOR_THIS_FIELD`:
 
+{failed_regexes}
 
 `DOCUMENT_TEXT`:
 

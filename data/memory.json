@@ -1,41 +1,77 @@
 {
+  "carteira_oab": {
+    "nome": [
+      "(?m)^(?:\\s*)?([A-ZÀ-Ý\\'\\-\\s]+)\\s*(?:\\r?\\n)",
+      "\\b([A-ZÀ-Ÿ]{2,}(?:\\s+[A-ZÀ-Ÿ\\.\\-]{2,}){1,6})\\b",
+      "^(?:\\s*)?([A-ZÀ-ÚÑ][A-ZÀ-ÚÑ\\s\\-]+)\\s*\\n\\s*Inscrição"
+    ],
+    "inscricao": [
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\b",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\s*[A-Z]{2}",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?:\\s|$)"
+    ],
+    "seccional_blacklist": [
+      "Seccional\\s*([A-Za-z]{2})"
+    ],
+    "subsecao_blacklist": [
+      "Seccional\\s*Subseção[\\s\\S]*?([A-Za-zÇÁÉÍÓÚÂÊÎÔÛÃÕàâêîôûãõç0-9\\-\\s]+)",
+      "Seccional\\s*Subseção[\\s\\S]*?\\d+\\s+[A-Z]{2}\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\-\\s]+)"
+    ],
+    "seccional": [
+      "Inscrição Seccional Subseção[\\s\\S]*?([A-Z]{2}[\\s\\S]+?PARAN[ÁA])",
+      "Seccional[\\s\\S]*?([A-Za-z]{2})(?:\\s|\\b|$)"
+    ],
+    "categoria": [
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\n\\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ ]+?)\\s*(?:\\n|$)",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\n\\s*([A-Za-zÀ-ÿ\\s]+?)\\s*\\n"
+    ],
+    "endereco_profissional_blacklist": [
+      "Endereço Profissional\\s*([\\s\\S]*?)(?:\\n\\s*Telefone Profissional|\\n\\s*$)",
+      "Endereço Profissional\\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9,\\.ºª\\-\\s]+?)(?:\\n\\s*Telefone Profissional|\\n\\s*SITUAÇÃO|\\n\\s*$)"
+    ],
+    "categoria_blacklist": [
+      "^(?:.*\\n)?\\s*([A-ZÇÁÉÍÓÚÃÕÂÊÔÜÑ\\- ]+)\\s*(?:\\n|$)"
+    ],
+    "situacao_blacklist": [
+      "SITUAÇÃO\\s*([A-Z\\s]+)",
+      "SITUAÇÃO\\s*([A-ZÁÉÍÓÚÀÈÌÒÙÇ\\s]+)",
+      "SITUAÇÃO\\s*([A-ZÀ-Ý\\s]+)"
+    ]
+  },
   "tela_sistema": {
-    "valor_parcela": [
-      "Parc\\.\\s*\\n?\\s*([\\d\\.]+,[\\d]{2})\\b"
-    ],
-    "cidade": [
-      "Cidade:\\s*([A-Za-zÀ-ÿ\\-\\s]+)\\s*U\\.F\\."
-    ],
     "data_base": [
       "Data Referência:\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
     ],
+    "pesquisa_por_blacklist": [
+      "Pesquisar por:\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\s]+)"
+    ],
     "data_verncimento": [
-      "12/10/2025"
+      "Seleção de parcelas:\\s*[\\s\\S]*?\\b(\\d{2}/\\d{2}/\\d{4})"
+    ],
+    "data_referencia_blacklist": [
+      "Data Base\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
+    ],
+    "pesquisa_tipo_blacklist": [
+      "Pesquisar por:\\s*Tipo:\\s*([A-Za-z]+)"
     ],
     "produto": [
-      "Sistema\\s+Saldo\\s+Vencido[\\s\\S]*?\\n[\\s\\S]*?\\b([A-Za-zÀ-ÿ\\s]+?)\\b\\s+[\\d\\.,]+"
+      "Vcto mais antigo\\s*Dias atraso\\s*Sistema[\\s\\S]*?\\b([A-Za-zÀ-ÖØ-öø-ÿ\\s]+)\\b\\s*[\\d]+,[\\d]{2}"
     ],
-    "sistema": [
-      "Vcto mais antigo\\s+Dias atraso\\s+Sistema[\\s\\S]*?\\n[\\s\\S]*?\\b([A-Za-zÀ-ÿ\\s]+?)\\b\\s+[\\d\\.,]+"
-    ]
-  },
-  "carteira_oab": {
-    "inscricao": [
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\b"
+    "selecao_de_parcelas_blacklist": [
+      "Seleção de parcelas\\s*[:\\-]?\\s*([A-Za-zÀ-ÿ\\s]+)"
     ],
-    "seccional": [
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\b([A-Z]{2})\\b"
+    "sistema_blacklist": [
+      "Sistema\\s*[:\\-]?\\s*([A-ZÁÉÍÓÚÃÕÇ\\s]+)",
+      "Sistema\\s*[:\\-\\s]*[\\s\\S]*?([A-Za-zÀ-ÖØ-öø-ÿ0-9\\s]+?)\\s*(?:\\n|U\\.F\\.|Cidade:|Tipo:|Contrato:|$)"
     ],
-    "situacao": [
-      "Telefone Profissional[\\s\\S]*?\\b([A-ZÀ-Ý\\s]+REGULAR|[A-ZÀ-Ý\\s]+)\\b"
+    "total_de_parcelas_blacklist": [
+      "Qtd\\. Parcelas\\s*([\\d]+)"
     ],
-    "nome": [
-      "(?:^|\\n)\\s*([A-ZÀ-Ÿ'\\-\\.\\s]+)\\s*\\n\\s*Inscrição\\s*Seccional\\s*Subseção",
-      "^\\s*([A-ZÁÀÂÃÉÈÊÍÓÔÕÚÜÇ\\s]+)\\s*(?=\\r?\\n\\s*Inscrição)"
+    "valor_parcela": [
+      "Operação\\s*Selecionada[\\s\\S]*?VIr\\.\\s*Parc\\.\\s*([\\d\\.]+,[\\d]{2})"
     ],
-    "categoria": [
-      "\\n\\s*([A-ZÀ-Ÿ]+)\\s*\\n\\s*Endereço Profissional",
-      "CONSELHO\\s+SECCIONAL\\s*-\\s*[A-ZÁÀÂÃÉÈÊÍÓÔÕÚÜÇ\\s]+[\\s\\S]*?\\r?\\n\\s*([A-ZÁÀÂÃÉÈÊÍÓÔÕÚÜÇ]+)\\s*(?=\\r?\\n\\s*Endereço Profissional)"
+    "cidade": [
+      "Cidade:\\s*([A-Za-zÀ-ÿ\\-\\s]+?)\\s*(?:U\\.F\\.|CEP:|\\n)"
     ]
   }
 }

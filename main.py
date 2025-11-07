@@ -2,9 +2,6 @@
 """
 main.py
 Main entry point for the PDF processing pipeline.
-
-Usage:
-    python main.py path/to/config.json [path/to/pdfs_folder]
 """
 
 import sys
@@ -16,6 +13,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
 import asyncio
 from datetime import datetime
+from collections import defaultdict # Import necessário para o agrupamento
 
 # Import from our pipeline module
 from pdf_pipeline import (
@@ -24,6 +22,7 @@ from pdf_pipeline import (
         clean,
         normalize
 )
+# ... (parse_argrs, _process, load inalteradas) ...
 
 def parse_argrs():
         parser = argparse.ArgumentParser(description="Process PDFs according to a JSON config.")
@@ -44,10 +43,6 @@ def _process(path: Path, cfg_dict: dict) -> tuple:
     return path.name, {"clean_data": cleaned, "normalized_data": normalized}
 
 def load(pdf_path: str, cfg ) -> dict:
-    """
-    Loads and processes a the PDF(s) file(s).
-    ...
-    """
     # ... (código inalterado) ...
     if isinstance(pdf_path, (list, tuple)):
         paths = []
@@ -89,7 +84,7 @@ def load(pdf_path: str, cfg ) -> dict:
 
     return results
 
-# --- NOVO: Função load_memory (movida do extractor.py) ---
+# --- NOVO: Função load_memory (Movida e Ajustada) ---
 def load_memory(path: Path) -> dict:
     """Carrega com segurança o arquivo de memória, retornando {} em caso de falha."""
     if not path.exists():
@@ -106,8 +101,8 @@ def load_memory(path: Path) -> dict:
         print(f"Error loading memory file {path}: {e}. Initializing empty memory.")
         return {}
     
-# --- run MODIFICADO ---
-async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict): # Aceita 'memory'
+# --- run MODIFICADO: Implementa Agrupamento por 'pro' mode ---
+async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict):
     """
     Runs the extraction process...
     """
@@ -115,19 +110,35 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict):
     from extractor import Extractor
     all_results = []
     background_tasks = [] 
-    
-    # --- MODIFICADO: Cria o Lock aqui ---
     memory_lock = asyncio.Lock()
-    # --- FIM DA MODIFICAÇÃO ---
-
+    
     total_run_start_time = time.perf_counter()
-    for schema in extr_schema:
-        print(f"Processing PDF: {schema['pdf_path']}")
+
+    # --- IMPLEMENTAÇÃO DO MODO "PRO" COM AGRUPAMENTO ---
+    mode = cfg.get("mode", "smart")
+    
+    if mode == "pro":
+        # 1. Agrupa os esquemas por label
+        grouped_schemas = defaultdict(list)
+        for schema in extr_schema:
+            grouped_schemas[schema['label']].append(schema)
+        
+        # 2. Reordena a lista de execução para processar por grupo
+        ordered_schemas = []
+        for label in grouped_schemas:
+            ordered_schemas.extend(grouped_schemas[label])
+    else: # Modo "smart" (ou qualquer outro) mantém a ordem original
+        ordered_schemas = extr_schema
+    
+    print(f"Execution Mode: {mode.upper()}. Total PDFs to process: {len(ordered_schemas)}")
+    # --- FIM DA IMPLEMENTAÇÃO DO AGRUPAMENTO ---
+
+    for schema in ordered_schemas:
+        print(f"Processing PDF: {schema['pdf_path']} (Label: {schema['label']})")
         pdf_processing_start_time = time.perf_counter()
         
-        # --- MODIFICADO: Passa a memória compartilhada e o lock ---
+        # Passa a memória compartilhada e o lock
         extr_ = Extractor(cfg, schema, memory, memory_lock)
-        # --- FIM DA MODIFICAÇÃO ---
         
         result, task = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) 
         
@@ -150,7 +161,7 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict):
 
     return all_results
 
-# --- main MODIFICADO ---
+# --- main MODIFICADO: Garante que a memória seja carregada uma vez ---
 async def main(args) -> int:
     memory_path = None 
     try:
@@ -160,18 +171,17 @@ async def main(args) -> int:
         
         memory_path = Path(cfg.get("memory_file"))
         
-        # --- MODIFICADO: Carrega a memória ANTES de tudo ---
+        # Carrega a memória ANTES de tudo
         memory_data = load_memory(memory_path)
-        # Tenta criar o diretório pai, se necessário
+        
         try:
             memory_path.parent.mkdir(parents=True, exist_ok=True)
             if not memory_path.exists():
-                # Se o arquivo não existia, salva a memória vazia (ou o que load_memory leu)
+                # Salva o dicionário de memória (vazio ou carregado) no arquivo se ele não existir
                 with open(memory_path, 'w', encoding='utf-8') as f:
                      json.dump(memory_data, f, indent=2)
         except Exception as e:
             print(f"Warning: unable to create cache file {memory_path}: {e}")
-        # --- FIM DA MODIFICAÇÃO ---
 
         results_dir = Path("results")
         results_dir.mkdir(parents=True, exist_ok=True)
@@ -187,9 +197,7 @@ async def main(args) -> int:
         print(f"Error processing PDFs: {e}")
         return 1
     
-    # --- MODIFICADO: Passa memory_data para o run ---
     all_extraction_results = await run(cfg, extr_schema, processed_pdfs, memory_data)
-    # --- FIM DA MODIFICAÇÃO ---
 
     if all_extraction_results:
         try:
@@ -198,9 +206,6 @@ async def main(args) -> int:
                 print(f"Extraction results saved to {output_file_path}")
         except Exception as e:
             print(f"Error saving results to output file {output_file_path}: {e}")
-
-    # Não precisamos mais da limpeza de memória aqui, pois o
-    # arquivo agora é persistente e gerenciado corretamente.
             
     return 0
 

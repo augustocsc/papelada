@@ -14,7 +14,7 @@ class LLMExtractor:
     e a subsequente aplicação das regexes para extração de dados.
     """
 
-    def __init__(self, cfg: dict, campos_a_extrair: list, text_to_analyze: str, client=None):
+    def __init__(self, cfg: dict, campos_a_extrair: list, text_to_analyze: str, client=None, failed_regexes: list = None):
         """
         Inicializa o extrator, carregando o schema e o prompt.
         """
@@ -26,6 +26,7 @@ class LLMExtractor:
         
         self.campos_a_extrair = campos_a_extrair
         self.text_to_analyze = text_to_analyze
+        self.failed_regexes = failed_regexes if failed_regexes is not None else [] # Aceita failed_regexes
         
         #Load prompts and configs for data extraction and regex generation
         self.data_extr_ = cfg.get("data_extr_", {}).copy()
@@ -37,7 +38,7 @@ class LLMExtractor:
             self.data_extr_['prompt'] = prompts_data.get(self.data_extr_['prompt'])
             self.regex_extr_['prompt'] = prompts_data.get(self.regex_extr_['prompt'])
 
-        # Map reasoning for regex and data 
+        # Mapeamento de 'reasoning' e 'temperature' (código mantido)
         if self.regex_extr_["reasoning"] <= 0:
                 self.regex_extr_["reasoning"] = "minimal"
         elif self.regex_extr_["reasoning"] <= 0.33:
@@ -94,13 +95,19 @@ class LLMExtractor:
             except Exception as e:
                 raise Exception(f"Error reading prompt file: {e}")
             
+            # --- Inclusão da Blacklist no Prompt ---
+            failed_regex_str = "\n".join(f"- {r}" for r in self.failed_regexes) if self.failed_regexes else "Nenhuma regex falhou anteriormente para este campo."
+            
             return prompt_content.format(
                 schema = self.campos_a_extrair,
-                text=self.text_to_analyze
+                text=self.text_to_analyze,
+                failed_regexes=failed_regex_str # Novo parâmetro
             )
         else:
             raise ValueError(f"Unknown task type: {task['task']}")
 
+    # Timeout de 20 segundos para todas as chamadas
+    LLM_TIMEOUT = 20.0 
 
     async def generate_regex_json(self) -> dict:
         """Chama o LLM usando o cliente nativo da OpenAI para gerar a lista JSON."""
@@ -116,15 +123,19 @@ class LLMExtractor:
         ]
         
         try:
-            
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=1,
-                reasoning_effort=self.regex_extr_["reasoning"],
-                verbosity= self.regex_extr_["temperature"]
+            # --- Adiciona asyncio.wait_for para Timeout ---
+            response = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                    temperature=1,
+                    reasoning_effort=self.regex_extr_["reasoning"],
+                    verbosity= self.regex_extr_["temperature"]
+                ),
+                timeout=self.LLM_TIMEOUT
             )
+            # --- Fim do Timeout ---
             
             end_time = time.perf_counter()
             duration = end_time - start_time
@@ -139,6 +150,8 @@ class LLMExtractor:
                 "prompt_used": prompt
             }
         
+        except asyncio.TimeoutError:
+             return {"error": f"LLM Timeout Error (model {self.model_name}): A chamada excedeu o limite de {self.LLM_TIMEOUT}s e foi cancelada.", "model_name": self.model_name}
         except OpenAIError as e:
              return {"error": f"OpenAI API Error (model {self.model_name}): {e}", "model_name": self.model_name}
         except json.JSONDecodeError as e:
@@ -159,14 +172,19 @@ class LLMExtractor:
         ]
                
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=1,
-                reasoning_effort=self.data_extr_["reasoning"],
-                verbosity= self.data_extr_["temperature"]
+            # --- Adiciona asyncio.wait_for para Timeout ---
+            response = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                    temperature=1,
+                    reasoning_effort=self.data_extr_["reasoning"],
+                    verbosity= self.data_extr_["temperature"]
+                ),
+                timeout=self.LLM_TIMEOUT
             )
+            # --- Fim do Timeout ---
             
             end_time = time.perf_counter()
             duration = end_time - start_time
@@ -181,6 +199,8 @@ class LLMExtractor:
                 "prompt_used": prompt
             }
         
+        except asyncio.TimeoutError:
+             return {"error": f"LLM Timeout Error (model {self.model_name}): A chamada excedeu o limite de {self.LLM_TIMEOUT}s e foi cancelada.", "model_name": self.model_name}
         except OpenAIError as e:
              return {"error": f"OpenAI API Error (model {self.model_name}): {e}", "model_name": self.model_name}
         except json.JSONDecodeError as e:

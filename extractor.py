@@ -1,4 +1,4 @@
-import asyncio # Importar asyncio
+import asyncio
 import time
 import json
 import re
@@ -17,7 +17,6 @@ client = AsyncOpenAI()
 
 
 class Extractor:
-    # --- __init__ MODIFICADO ---
     def __init__(self, config: dict, file_schema: dict, shared_memory: dict, lock: asyncio.Lock):
         self.cfg = config
 
@@ -26,37 +25,26 @@ class Extractor:
         self.extraction_schema = file_schema["extraction_schema"]
         self.label = file_schema["label"]
         
-        # --- MODIFICADO ---
-        # Não carrega mais do arquivo, usa o objeto compartilhado
+        # --- MODIFICADO: Memória compartilhada e Lock ---
         self.memory = shared_memory 
-        self.lock = lock # Armazena o lock
+        self.lock = lock
+        # Garante que o label exista na memória e tenha estrutura de blacklist
+        if self.label not in self.memory:
+            self.memory[self.label] = {}
         # --- FIM DA MODIFICAÇÃO ---
 
         self.rules = {}
         
         self.known_rules = {}
         # Check if there are known rules in memory for this label
-        if file_schema["label"] in self.memory:
-            memory_rules = self.memory[file_schema["label"]] # If there are, load them
-            self.known_rules = {key: memory_rules[key] 
-                                    for key in self.extracted_data if key in memory_rules}
+        memory_rules = self.memory.get(self.label, {})
+        self.known_rules = {key: memory_rules.get(key)
+                            for key in self.extracted_data if key in memory_rules and key.endswith("_blacklist") == False}
 
-    def load_memory(self, path: str) -> dict:
-        # Este método não é mais usado pelo __init__, mas pode ser mantido
-        # (Agora será chamado pelo main.py)
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                if not content:
-                    return {}
-                memory_data = json.loads(content)
-                return memory_data
-        except FileNotFoundError:
-            print(f"Memory file not found at {path}. Initializing empty memory.")
-            return {}
 
+    # O método load_memory foi movido para main.py
+    # O método _save_memory foi movido para dentro do Lock na tarefa de fundo para salvar o objeto 'self.memory' compartilhado
     def _save_memory(self, path: str):
-        
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.memory, f, indent=2, ensure_ascii=False)
 
@@ -68,6 +56,9 @@ class Extractor:
             for pattern in patterns:
                 if not isinstance(pattern, str): continue
 
+                # O padrão regex pode ter vindo de uma lista de regras (não-blacklist), 
+                # então o tratamento é o mesmo.
+                
                 match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
 
                 if match:
@@ -84,7 +75,7 @@ class Extractor:
                 self.extracted_data[field] = 'null'
         return self.extracted_data
     
-    # --- _background_regex_task MODIFICADO ---
+    # --- NOVO MÉTODO PARA TAREFA DE FUNDO ---
     async def _background_regex_task(self, text: str):
         """
         Executa a geração, validação e salvamento de regex em segundo plano.
@@ -92,20 +83,32 @@ class Extractor:
         print(f"  Stage: [BG] Generating and validating regex rules for {self.label}")
         
         try:
-            llm_extracted_rules = await self.llm.generate_regex_json()
-            print(f"  Stage: [BG] LLM regex generation completed for {self.label}.")
-            
-            # --- MODIFICADO: Adiciona o Lock ---
-            # Adquire o "cadeado" antes de modificar e salvar
-            async with self.lock:
-                print(f"  Stage: [BG] Lock acquired for saving memory ({self.label})")
+            # Prepara a lista de campos para a LLMExtractor.
+            # O campo 'extraction_schema' já contém apenas os campos que precisam de regex.
+            for field in self.extraction_schema.keys():
+                
+                # --- Lógica da Blacklist ---
+                # Pega a blacklist para o campo atual
+                blacklist_key = f"{field}_blacklist"
+                current_blacklist = self.memory[self.label].get(blacklist_key, [])
+                
+                # Instancia LLMExtractor passando a blacklist
+                self.llm = LLMExtractor(
+                    self.cfg["llm"], 
+                    {field: self.extraction_schema[field]}, # Passa apenas o schema do campo atual
+                    text, 
+                    client=client,
+                    failed_regexes=current_blacklist
+                )
+                
+                # Gera regex para um único campo
+                llm_extracted_rules = await self.llm.generate_regex_json()
+                
                 if llm_extracted_rules and "json_response" in llm_extracted_rules:
-                    label = self.label
-                    if label not in self.memory:
-                        self.memory[label] = {}
+                    rule_entry = llm_extracted_rules["json_response"].get(field)
                     
-                    for field, rule in llm_extracted_rules["json_response"].items():
-                        new_regex = rule.get("regex")
+                    if rule_entry:
+                        new_regex = rule_entry.get("regex")
                         expected_value = self.extraction_schema.get(field, {}).get("ref")
 
                         is_valid_rule = False
@@ -127,31 +130,45 @@ class Extractor:
 
                             if extracted_value and extracted_value == expected_value:
                                 is_valid_rule = True
-
+                        
                         except re.error as e:
                             print(f"⚠️  [BG] Invalid regex syntax for field '{field}': {new_regex}. Error: {e}")
                             pass
                         
-                        if is_valid_rule:
-                            if field in self.memory[label]:
-                                if isinstance(self.memory[label][field], list):
-                                    if new_regex not in self.memory[label][field]:
-                                        self.memory[label][field].append(new_regex)
-                                else:
-                                    if self.memory[label][field] != new_regex:
-                                        self.memory[label][field] = [self.memory[label][field], new_regex]
+                        # --- MODIFICAÇÃO DE SALVAMENTO COM BLACKLIST/LOCK ---
+                        # Adquire o "cadeado" antes de modificar e salvar. Isso garante que a memória
+                        # será modificada em um único passo atômico.
+                        async with self.lock:
+                            if is_valid_rule:
+                                # Adiciona a regra à lista de regras válidas
+                                if field not in self.memory[self.label] or not isinstance(self.memory[self.label][field], list):
+                                    self.memory[self.label][field] = []
+                                
+                                if new_regex not in self.memory[self.label][field]:
+                                    self.memory[self.label][field].append(new_regex)
+                                
+                                # Remove o campo da blacklist se ele estava lá
+                                if new_regex in self.memory[self.label].get(blacklist_key, []):
+                                    self.memory[self.label][blacklist_key].remove(new_regex)
+                            
                             else:
-                                self.memory[label][field] = [new_regex]
-                    
-                    # O salvamento agora ocorre dentro do lock
-                    self._save_memory(self.cfg.get("memory_file"))
-            # --- FIM DA MODIFICAÇÃO (Lock é liberado aqui) ---
+                                # Adiciona a regra inválida à blacklist (se não estiver lá)
+                                if blacklist_key not in self.memory[self.label] or not isinstance(self.memory[self.label][blacklist_key], list):
+                                    self.memory[self.label][blacklist_key] = []
+
+                                if new_regex and new_regex not in self.memory[self.label][blacklist_key]:
+                                    self.memory[self.label][blacklist_key].append(new_regex)
+                            
+                            # Salva a memória após cada iteração de campo (dentro do lock) para
+                            # que processos paralelos possam ler as regras mais recentes.
+                            self._save_memory(self.cfg.get("memory_file")) 
 
             print(f"  Stage: [BG] Finished regex task for {self.label}.")
         except Exception as e:
             print(f"ERROR in background regex task for {self.label}: {e}")
     
-    async def extract(self, text: str) -> tuple: # Retornará um tuplo (dict, task)
+    # --- MÉTODO EXTRACT MODIFICADO ---
+    async def extract(self, text: str) -> tuple: 
         start_time = time.perf_counter()
         print(f"  Stage: Applying known rules for {self.label}")
 
@@ -166,6 +183,7 @@ class Extractor:
             fields_to_extract = [k for k, v in self.extracted_data.items() if v == 'null']
             self.extraction_schema = {k: self.extraction_schema[k] for k in fields_to_extract if k in self.extraction_schema}
 
+            # A LLMExtractor para extração de dados não precisa de blacklist, apenas os dados a extrair.
             self.llm = LLMExtractor(self.cfg["llm"], self.extraction_schema, text, client=client)
             
             llm_extracted_data = await self.llm.extract_data_json()
@@ -174,19 +192,29 @@ class Extractor:
         
             background_task = None
             
-            if "json_response" in llm_extracted_data and self.cfg["mode"] == "smart":
+            if "json_response" in llm_extracted_data and self.cfg["mode"] == "smart" or self.cfg["mode"] == "pro":
+                # Processa os dados extraídos, preparando o 'extraction_schema' para a tarefa de fundo
+                valid_fields_for_regex_gen = {}
                 for field, data_obj in llm_extracted_data["json_response"].items():
                     if field in self.extracted_data:
                         if data_obj.get("confidence") != "low" and data_obj.get("dado") != "null":
                             self.extracted_data[field] = data_obj.get("dado")
-                            self.extraction_schema[field] = {
+                            
+                            # Prepara o schema de referência APENAS para campos bem extraídos
+                            valid_fields_for_regex_gen[field] = {
                                 "ref": data_obj.get("dado"),
                                 "description": self.extraction_schema.get(field)
                             }
                         else:
+                            # Se a confiança for baixa/dado nulo, remove do schema
                             del self.extraction_schema[field]
                 
-                background_task = asyncio.create_task(self._background_regex_task(text))
+                # Atualiza o schema com apenas os campos que serão usados para gerar regex
+                self.extraction_schema = valid_fields_for_regex_gen
+                
+                # Cria a tarefa de fundo SE houver campos para gerar regex
+                if self.extraction_schema:
+                    background_task = asyncio.create_task(self._background_regex_task(text))
             
             return self.extracted_data, background_task
         
