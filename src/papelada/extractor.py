@@ -6,19 +6,13 @@ import os # Importe o módulo os para acessar as variáveis de ambiente
 import dotenv
 from dotenv import load_dotenv
 from openai import AsyncOpenAI, OpenAIError
-from llm import LLMExtractor
-# Carrega variáveis de ambiente (.env)
-load_dotenv()
-
-# Verifica se a chave da OpenAI está disponível
-if not os.getenv("OPENAI_API_KEY"):
-    print("⚠️ AVISO: OPENAI_API_KEY não encontrada nas variáveis de ambiente.")
-client = AsyncOpenAI()
+from .llm import LLMExtractor
 
 
 class Extractor:
-    def __init__(self, config: dict, file_schema: dict, shared_memory: dict, lock: asyncio.Lock):
+    def __init__(self, config: dict, file_schema: dict, shared_memory: dict, lock: asyncio.Lock, client: AsyncOpenAI): # <-- Recebe o client
         self.cfg = config
+        self.client = client
 
         # Creating a list of fields to extract
         self.extracted_data = {key: 'null' for key in file_schema["extraction_schema"]}
@@ -68,6 +62,7 @@ class Extractor:
                         group_content = match.group(0)
                     if group_content is not None:
                         self.extracted_data[field] = group_content.strip()
+                        print(f'Using known rule {pattern} on field {field}')  # Imprime a regra e o campo quando aplicado
                         match_found = True
                         break
             
@@ -97,7 +92,7 @@ class Extractor:
                     self.cfg["llm"], 
                     {field: self.extraction_schema[field]}, # Passa apenas o schema do campo atual
                     text, 
-                    client=client,
+                    client=self.client,
                     failed_regexes=current_blacklist
                 )
                 
@@ -149,7 +144,7 @@ class Extractor:
                                 
                                 # Remove o campo da blacklist se ele estava lá
                                 if new_regex in self.memory[self.label].get(blacklist_key, []):
-                                    self.memory[self.label][blacklist_key].remove(new_regex)
+                                    self.memory[self.label][blacklist_key.remove(new_regex)]
                             
                             else:
                                 # Adiciona a regra inválida à blacklist (se não estiver lá)
@@ -184,7 +179,7 @@ class Extractor:
             self.extraction_schema = {k: self.extraction_schema[k] for k in fields_to_extract if k in self.extraction_schema}
 
             # A LLMExtractor para extração de dados não precisa de blacklist, apenas os dados a extrair.
-            self.llm = LLMExtractor(self.cfg["llm"], self.extraction_schema, text, client=client)
+            self.llm = LLMExtractor(self.cfg["llm"], self.extraction_schema, text, client=self.client)
             
             llm_extracted_data = await self.llm.extract_data_json()
             end_llm_data_time = time.perf_counter()

@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "papelada"
+version = "0.1.0"
+description = "Solução de extração de dados com LLM e aprendizado de regras."
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["src"]

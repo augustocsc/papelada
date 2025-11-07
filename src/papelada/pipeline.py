@@ -10,8 +10,65 @@ import unicodedata
 import pdfplumber
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+
+# Imports relativos
+from .utils import load_json # (Não é usado aqui, mas seria se fosse)
 
 # --- Text Processing Functions ---
+def _process(path: Path, cfg_dict: dict) -> tuple:
+    """
+    Worker function for parallel PDF processing. 
+    Must be defined globally for ProcessPoolExecutor to work.
+    """
+    raw = extract(str(path))
+    cleaned = clean(raw)
+    normalized = normalize(cleaned, cfg_dict.get("normalization_options", cfg_dict))
+    return path.name, {"clean_data": cleaned, "normalized_data": normalized}
+
+def load(pdf_path: str, cfg ) -> dict:
+    # ... (código inalterado) ...
+    if isinstance(pdf_path, (list, tuple)):
+        paths = []
+        for p in pdf_path:
+            p = Path(p)
+            if p.is_file():
+                paths.append(p)
+            elif p.is_dir():
+                paths.extend(sorted(p.rglob("*.pdf")))
+            else:
+                raise ValueError(f"Invalid path: {p}")
+    else:
+        p = Path(pdf_path)
+        if p.is_file():
+            paths = [p]
+        elif p.is_dir():
+            paths = sorted(p.rglob("*.pdf")) 
+        else:
+            raise ValueError(f"Invalid path: {pdf_path}")
+
+    if not paths:
+        raise FileNotFoundError(f"No PDF files found in: {pdf_path}")
+    if not paths:
+        raise FileNotFoundError(f"No PDF files found in: {pdf_path}")
+
+    results = {}
+    max_workers = min(32, (os.cpu_count() or 1) + 4)
+    cfg_for_process = cfg.to_dict() if hasattr(cfg, 'to_dict') else dict(cfg) 
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_process, p, cfg_for_process): p for p in paths}
+        
+        for fut in as_completed(futures):
+            try:
+                pdf_key, data = fut.result()
+                results[pdf_key] = data
+            except Exception as e:
+                raise RuntimeError(f"Error processing {futures[fut]}: {e}") from e
+
+    return results
 
 def extract(pdf_path: str) -> str:
     """
@@ -106,15 +163,5 @@ def normalize(text: str, options: dict = None) -> str:
         text = text.lower()
 
     return text
-# --- File Loading & Orchestration Functions ---
 
-def load_json(json_path: str) -> Any:
-    """
-    Loads and parses a JSON file.
-    Raises FileNotFoundError if the file does not exist.
-    """
-    p = Path(json_path)
-    if not p.is_file():
-        raise FileNotFoundError(f"JSON file not found: {json_path}")
-    return json.loads(p.read_text(encoding="utf-8"))
 

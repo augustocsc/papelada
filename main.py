@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 main.py
-Main entry point for the PDF processing pipeline.
+Ponto de entrada principal para o pipeline Papelada.
 """
 
 import sys
@@ -9,20 +9,14 @@ import json
 import argparse
 import os
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import time
 import asyncio
-from datetime import datetime
-from collections import defaultdict # Import necessário para o agrupamento
+from dotenv import load_dotenv # Importar dotenv aqui
+from openai import AsyncOpenAI # Importar AsyncOpenAI aqui
 
-# Import from our pipeline module
-from pdf_pipeline import (
-        load_json,
-        extract,
-        clean,
-        normalize
-)
-# ... (parse_argrs, _process, load inalteradas) ...
+# --- Imports do seu novo pacote 'papelada' ---
+from papelada.utils import load_json
+from papelada.pipeline import load as load_pdfs
+from papelada.orchestrator import run as run_orchestrator, load_memory
 
 def parse_argrs():
         parser = argparse.ArgumentParser(description="Process PDFs according to a JSON config.")
@@ -31,137 +25,6 @@ def parse_argrs():
         parser.add_argument("--config", "-c", default="config.json", help="Path to config JSON file (default: config.json)")
         return parser.parse_args()
 
-
-def _process(path: Path, cfg_dict: dict) -> tuple:
-    """
-    Worker function for parallel PDF processing. 
-    Must be defined globally for ProcessPoolExecutor to work.
-    """
-    raw = extract(str(path))
-    cleaned = clean(raw)
-    normalized = normalize(cleaned, cfg_dict.get("normalization_options", cfg_dict))
-    return path.name, {"clean_data": cleaned, "normalized_data": normalized}
-
-def load(pdf_path: str, cfg ) -> dict:
-    # ... (código inalterado) ...
-    if isinstance(pdf_path, (list, tuple)):
-        paths = []
-        for p in pdf_path:
-            p = Path(p)
-            if p.is_file():
-                paths.append(p)
-            elif p.is_dir():
-                paths.extend(sorted(p.rglob("*.pdf")))
-            else:
-                raise ValueError(f"Invalid path: {p}")
-    else:
-        p = Path(pdf_path)
-        if p.is_file():
-            paths = [p]
-        elif p.is_dir():
-            paths = sorted(p.rglob("*.pdf")) 
-        else:
-            raise ValueError(f"Invalid path: {pdf_path}")
-
-    if not paths:
-        raise FileNotFoundError(f"No PDF files found in: {pdf_path}")
-    if not paths:
-        raise FileNotFoundError(f"No PDF files found in: {pdf_path}")
-
-    results = {}
-    max_workers = min(32, (os.cpu_count() or 1) + 4)
-    cfg_for_process = cfg.to_dict() if hasattr(cfg, 'to_dict') else dict(cfg) 
-
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_process, p, cfg_for_process): p for p in paths}
-        
-        for fut in as_completed(futures):
-            try:
-                pdf_key, data = fut.result()
-                results[pdf_key] = data
-            except Exception as e:
-                raise RuntimeError(f"Error processing {futures[fut]}: {e}") from e
-
-    return results
-
-# --- NOVO: Função load_memory (Movida e Ajustada) ---
-def load_memory(path: Path) -> dict:
-    """Carrega com segurança o arquivo de memória, retornando {} em caso de falha."""
-    if not path.exists():
-        print(f"Memory file not found at {path}. Initializing empty memory.")
-        return {}
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            if not content:
-                return {}
-            memory_data = json.loads(content)
-            return memory_data
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading memory file {path}: {e}. Initializing empty memory.")
-        return {}
-    
-# --- run MODIFICADO: Implementa Agrupamento por 'pro' mode ---
-async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict):
-    """
-    Runs the extraction process...
-    """
-    
-    from extractor import Extractor
-    all_results = []
-    background_tasks = [] 
-    memory_lock = asyncio.Lock()
-    
-    total_run_start_time = time.perf_counter()
-
-    # --- IMPLEMENTAÇÃO DO MODO "PRO" COM AGRUPAMENTO ---
-    mode = cfg.get("mode", "smart")
-    
-    if mode == "pro":
-        # 1. Agrupa os esquemas por label
-        grouped_schemas = defaultdict(list)
-        for schema in extr_schema:
-            grouped_schemas[schema['label']].append(schema)
-        
-        # 2. Reordena a lista de execução para processar por grupo
-        ordered_schemas = []
-        for label in grouped_schemas:
-            ordered_schemas.extend(grouped_schemas[label])
-    else: # Modo "smart" (ou qualquer outro) mantém a ordem original
-        ordered_schemas = extr_schema
-    
-    print(f"Execution Mode: {mode.upper()}. Total PDFs to process: {len(ordered_schemas)}")
-    # --- FIM DA IMPLEMENTAÇÃO DO AGRUPAMENTO ---
-
-    for schema in ordered_schemas:
-        print(f"Processing PDF: {schema['pdf_path']} (Label: {schema['label']})")
-        pdf_processing_start_time = time.perf_counter()
-        
-        # Passa a memória compartilhada e o lock
-        extr_ = Extractor(cfg, schema, memory, memory_lock)
-        
-        result, task = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) 
-        
-        if task:
-            background_tasks.append(task) 
-
-        print("Extracted Data:")
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        all_results.append({"label": schema["label"], "pdf_path": schema["pdf_path"], "extracted_data": result})
-        pdf_processing_end_time = time.perf_counter()
-        print(f"Finished processing {schema['pdf_path']} in {pdf_processing_end_time - pdf_processing_start_time:.2f} seconds.\n")
-
-    total_run_end_time = time.perf_counter()
-    print(f"Total extraction process completed in {total_run_end_time - total_run_start_time:.2f} seconds.")
-
-    if background_tasks:
-        print(f"\nWaiting for {len(background_tasks)} background regex generation tasks to complete...")
-        await asyncio.gather(*background_tasks)
-        print("All background tasks finished.")
-
-    return all_results
-
-# --- main MODIFICADO: Garante que a memória seja carregada uma vez ---
 async def main(args) -> int:
     memory_path = None 
     try:
@@ -170,14 +33,11 @@ async def main(args) -> int:
         extr_schema = load_json(json_path)
         
         memory_path = Path(cfg.get("memory_file"))
-        
-        # Carrega a memória ANTES de tudo
         memory_data = load_memory(memory_path)
         
         try:
             memory_path.parent.mkdir(parents=True, exist_ok=True)
             if not memory_path.exists():
-                # Salva o dicionário de memória (vazio ou carregado) no arquivo se ele não existir
                 with open(memory_path, 'w', encoding='utf-8') as f:
                      json.dump(memory_data, f, indent=2)
         except Exception as e:
@@ -192,12 +52,23 @@ async def main(args) -> int:
         return 1
 
     try:
-        processed_pdfs = load(args.pdf_path, cfg)
+        processed_pdfs = load_pdfs(args.pdf_path, cfg)
     except Exception as e:
         print(f"Error processing PDFs: {e}")
         return 1
     
-    all_extraction_results = await run(cfg, extr_schema, processed_pdfs, memory_data)
+    # --- Injeção de Dependência ---
+    # 1. Carregue o .env
+    load_dotenv()
+    if not os.getenv("OPENAI_API_KEY"):
+        print("⚠️ AVISO: OPENAI_API_KEY não encontrada nas variáveis de ambiente.")
+        return 1
+        
+    # 2. Instancie o cliente AQUI
+    client = AsyncOpenAI()
+    
+    # 3. Passe o cliente para o orquestrador
+    all_extraction_results = await run_orchestrator(cfg, extr_schema, processed_pdfs, memory_data, client)
 
     if all_extraction_results:
         try:
@@ -206,14 +77,6 @@ async def main(args) -> int:
                 print(f"Extraction results saved to {output_file_path}")
         except Exception as e:
             print(f"Error saving results to output file {output_file_path}: {e}")
-        
-        finally:  # Garante que a memória seja apagada, mesmo em caso de erro
-            if memory_path and memory_path.exists():
-                try:
-                    os.remove(memory_path)
-                    print(f"Memory file {memory_path} deleted.")
-                except Exception as e:
-                    print(f"Warning: unable to delete memory file {memory_path}: {e}")
             
     return 0
 
