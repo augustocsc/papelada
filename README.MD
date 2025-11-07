@@ -1,4 +1,4 @@
-_                                                                                              
+```_                                                                                              
                                                                             .---.          _______                 
 _________   _...._               _________   _...._            __.....__     |   |          \  ___ `'.              
 \        |.'      '-.            \        |.'      '-.     .-''         '.   |   |           ' |--.\  \             
@@ -11,7 +11,7 @@ _________   _...._               _________   _...._           
   .'     '.            / /   | |_  .'     '.                 `''-...... -'   '---'/ /   | |_\_______|/   / /   | |_ 
 '-----------'          \ \._,\ '/'-----------'                                    \ \._,\ '/             \ \._,\ '/ 
                         `--'  `"                                                   `--'  `"               `--'  `"  
-
+```
 # Papelada - Desafio Enter AI Fellowship
 
 Este repositório contém a minha solução para o "Take Home Project" da Enter AI Fellowship. O objetivo central era criar uma solução de extração de dados de PDFs que fosse rápida (menos de 10 segundos por requisição), barata (minimizando custos de LLM), e precisa (acima de 80%), sem conhecer os *labels* ou *schemas* de extração antecipadamente.
