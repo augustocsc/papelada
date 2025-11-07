@@ -26,6 +26,7 @@ wheels/
 .installed.cfg
 *.egg
 
+
 # Virtual Environment
 venv/
 ENV/
@@ -44,6 +45,7 @@ env/
 # Operating System
 .DS_Store
 Thumbs.db
+*.bat
 
 # Project specific
 *.log
