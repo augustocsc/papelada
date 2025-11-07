@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
+import asyncio
 
 # Import from our pipeline module
 from pdf_pipeline import (
@@ -97,7 +98,7 @@ def load(pdf_path: str, cfg ) -> dict:
 
     return results
     
-def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict = None):
+async def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict = None): # Make run function async
     """
     Runs the extraction process on the processed PDFs using the provided configuration and extraction schema.
     First it checks the memory to find if there are rules already processed for the given label.
@@ -111,28 +112,23 @@ def run(cfg: dict, extr_schema: list, processed_pdfs: list, memory: dict = None)
     for schema in extr_schema:
             print(f"Processing PDF: {schema['pdf_path']}")
             extr_ = Extractor(cfg, schema)
-            result = extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data'])
-            
+            result = await extr_.extract(processed_pdfs[schema['pdf_path']]['normalized_data']) # Await the extract call
+
             print("Extracted Data:")
             print(json.dumps(result, indent=2, ensure_ascii=False))
 
             return 
-    def _run_extraction():
-        for schema in extr_schema:
-            print(f"Processing PDF: {schema['pdf_path']}")
-            extr_ = Extractor(cfg, schema, processed_pdfs[schema['pdf_path']])
 
             # Find the processed PDF data
 
     
 
             
-def main(args) -> int:
+async def main(args) -> int: # Make main function async
 #1. Loading configuration    
     try:
         # Load main config
         cfg = load_json(args.config)
-        print(cfg.get("normalization_options", cfg))
 
         # Load the JSON config file with extraction schema
         json_path = args.extraction_schema
@@ -160,9 +156,9 @@ def main(args) -> int:
         return 1
     
 # 3. Now the fun begins
-    run(cfg, extr_schema, processed_pdfs)
+    await run(cfg, extr_schema, processed_pdfs) # Await the run call
     return 0
 
 if __name__ == "__main__":
     args = parse_argrs()
-    sys.exit(main(args))
+    sys.exit(asyncio.run(main(args))) # Use asyncio.run to execute the async main function

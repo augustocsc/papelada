@@ -44,33 +44,37 @@ class Extractor:
             return {}
 
     def _apply(self, text: str, rules: dict) -> dict:
-        extracted = {}
+        
         for field, rule in rules.items():
             pattern = rule
             match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
-            print(f"{text}: {pattern}")
             if match:
-                extracted[field] = match.group(1).strip()
+                self.extracted_data[field] = match.group(1).strip()
                 #if returned more than expected
             else:
-                extracted[field] = 'null'
-        return extracted
+                self.extracted_data[field] = 'null'
+        return self.extracted_data
     
-    def extract(self, text: str) -> dict:
+    async def extract(self, text: str) -> dict: # Changed to async def
 
         if self.known_rules:
             self.extracted_data = self._apply(text, self.known_rules)
-        
+
         if 'null' in self.extracted_data.values():
             # remove filds already extracted
             fields_to_extract = [k for k, v in self.extracted_data.items() if v == 'null']
-            llm = LLMExtractor(self.cfg["llm"], fields_to_extract, text, client=self.client)
+            self.extraction_schema = {k: self.extraction_schema[k] for k in fields_to_extract if k in self.extraction_schema}
+
+            llm = LLMExtractor(self.cfg["llm"], self.extraction_schema, text, client=client)
             
-
-            pass
-        
-
-        
+            # Await the coroutine to get its result
+            llm_extracted_data = await llm.extract_data_json()
+            
+            if "json_response" in llm_extracted_data:
+                for field, data_obj in llm_extracted_data["json_response"].items():
+                    if field in self.extracted_data:
+                        self.extracted_data[field] = data_obj.get("dado")
+                   
         return self.extracted_data
     
     
