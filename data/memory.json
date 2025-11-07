@@ -1,41 +1,39 @@
 {
   "carteira_oab": {
     "nome": [
-      "(?m)^(?:\\s*)?([A-ZÀ-Ý\\'\\-\\s]+)\\s*(?:\\r?\\n)",
-      "\\b([A-ZÀ-Ÿ]{2,}(?:\\s+[A-ZÀ-Ÿ\\.\\-]{2,}){1,6})\\b",
-      "^(?:\\s*)?([A-ZÀ-ÚÑ][A-ZÀ-ÚÑ\\s\\-]+)\\s*\\n\\s*Inscrição"
+      "(?m)^(?:\\s*)?([A-ZÀ-Ú'\\-\\s]+)\\s*(?=\\r?\\nInscrição\\s+Seccional\\s+Subseção)",
+      "^(?:\\s*)?([A-ZÁÉÍÓÚÃÕÇ\\-\\s]+)\\s*\\n\\s*Inscrição"
     ],
     "inscricao": [
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\b",
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\s*[A-Z]{2}",
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?:\\s|$)"
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?=\\s+[A-Z]{2}\\s|\\s|$)",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(?:\\n|\\r|\\r\\n)?\\s*([\\d]+)\\b"
     ],
     "seccional_blacklist": [
-      "Seccional\\s*([A-Za-z]{2})"
+      "Seccional\\s*([A-Z]{2})"
     ],
     "subsecao_blacklist": [
-      "Seccional\\s*Subseção[\\s\\S]*?([A-Za-zÇÁÉÍÓÚÂÊÎÔÛÃÕàâêîôûãõç0-9\\-\\s]+)",
-      "Seccional\\s*Subseção[\\s\\S]*?\\d+\\s+[A-Z]{2}\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\-\\s]+)"
-    ],
-    "seccional": [
-      "Inscrição Seccional Subseção[\\s\\S]*?([A-Z]{2}[\\s\\S]+?PARAN[ÁA])",
-      "Seccional[\\s\\S]*?([A-Za-z]{2})(?:\\s|\\b|$)"
-    ],
-    "categoria": [
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\n\\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ ]+?)\\s*(?:\\n|$)",
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\n\\s*([A-Za-zÀ-ÿ\\s]+?)\\s*\\n"
-    ],
-    "endereco_profissional_blacklist": [
-      "Endereço Profissional\\s*([\\s\\S]*?)(?:\\n\\s*Telefone Profissional|\\n\\s*$)",
-      "Endereço Profissional\\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9,\\.ºª\\-\\s]+?)(?:\\n\\s*Telefone Profissional|\\n\\s*SITUAÇÃO|\\n\\s*$)"
+      "Subseção\\s*([A-ZÁÉÍÓÚÃÕÇ\\-\\s]+)(?:\\s|$)",
+      "Subseção\\s*[\\s\\S]*?([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇÑ\\-\\s]+)(?:\\s|$)"
     ],
     "categoria_blacklist": [
-      "^(?:.*\\n)?\\s*([A-ZÇÁÉÍÓÚÃÕÂÊÔÜÑ\\- ]+)\\s*(?:\\n|$)"
+      "\\b(?i)CONSELHO SECCIONAL\\s*-\\s*[A-ZÀ-Ÿ\\s]+\\s*\\n\\s*([A-ZÀ-Ÿ]+)\\b"
+    ],
+    "seccional": [
+      "Seccional[\\s\\S]*?\\b([A-Z]{2})\\b"
+    ],
+    "endereco_profissional_blacklist": [
+      "Endereço Profissional\\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9\\,\\.\\-ªººº\\s]+?)(?:\\n\\s*Telefone Profissional|\\n\\s*$)",
+      "Endereço Profissional\\s*[\\s\\S]*?([A-Za-zÀ-ÖØ-öø-ÿ0-9,\\.\\-ºª\\s]+?)(?:\\n\\s*Telefone Profissional|\\n\\s*$)"
+    ],
+    "categoria": [
+      "CONSELHO SECCIONAL\\s*-\\s*[A-ZÀ-Ÿ\\s]+\\s*\\n\\s*([A-ZÀ-Ÿ]+)\\s*(?:\\n|$)",
+      "CONSELHO SECCIONAL[\\s\\S]*?\\n\\s*([A-ZÀ-Ý\\s]+)\\b"
     ],
     "situacao_blacklist": [
       "SITUAÇÃO\\s*([A-Z\\s]+)",
-      "SITUAÇÃO\\s*([A-ZÁÉÍÓÚÀÈÌÒÙÇ\\s]+)",
-      "SITUAÇÃO\\s*([A-ZÀ-Ý\\s]+)"
+      "SITUAÇÃO\\s*([A-Za-zÁÉÍÓÚÃÕÇÂÊÔÜáéíóúãõçâêôü\\s]+)",
+      "SITUAÇÃO\\s*([A-Z\\s]+?)(?:\\n|$)"
     ]
   },
   "tela_sistema": {
@@ -43,35 +41,35 @@
       "Data Referência:\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
     ],
     "pesquisa_por_blacklist": [
-      "Pesquisar por:\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\s]+)"
+      "Pesquisar por:\\s*([A-Za-zÀ-ÿ\\s]+)"
     ],
     "data_verncimento": [
-      "Seleção de parcelas:\\s*[\\s\\S]*?\\b(\\d{2}/\\d{2}/\\d{4})"
-    ],
-    "data_referencia_blacklist": [
-      "Data Base\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
+      "Vcto\\s*mais\\s*antigo[\\s\\S]*?(\\d{2}/\\d{2}/\\d{4})"
     ],
     "pesquisa_tipo_blacklist": [
-      "Pesquisar por:\\s*Tipo:\\s*([A-Za-z]+)"
+      "Pesquisar por:\\s*Tipo:\\s*([A-Za-zÀ-ú]+)"
     ],
-    "produto": [
-      "Vcto mais antigo\\s*Dias atraso\\s*Sistema[\\s\\S]*?\\b([A-Za-zÀ-ÖØ-öø-ÿ\\s]+)\\b\\s*[\\d]+,[\\d]{2}"
+    "data_referencia": [
+      "Data Base\\s*[\\s\\S]*?(\\d{2}/\\d{2}/\\d{4})"
     ],
-    "selecao_de_parcelas_blacklist": [
-      "Seleção de parcelas\\s*[:\\-]?\\s*([A-Za-zÀ-ÿ\\s]+)"
+    "produto_blacklist": [
+      "Produto(?:\\s*[:\\-]?)?\\s*([A-Za-zÇçÁÉÍÓÚÂÊÔÃÕÜáéíóúâêôãõü\\s]+)"
     ],
     "sistema_blacklist": [
-      "Sistema\\s*[:\\-]?\\s*([A-ZÁÉÍÓÚÃÕÇ\\s]+)",
-      "Sistema\\s*[:\\-\\s]*[\\s\\S]*?([A-Za-zÀ-ÖØ-öø-ÿ0-9\\s]+?)\\s*(?:\\n|U\\.F\\.|Cidade:|Tipo:|Contrato:|$)"
+      "Sistema\\s*[:\\s]*([A-Za-zÀ-ÿ0-9\\s\\-_/]+)",
+      "Sistema\\s*[:\\-]?\\s*([A-Za-zÀ-ÿ\\s]+)"
     ],
-    "total_de_parcelas_blacklist": [
-      "Qtd\\. Parcelas\\s*([\\d]+)"
+    "selecao_de_parcelas_blacklist": [
+      "Seleção de parcelas[\t ]*[:\\-]?\\s*([A-Za-zÀ-ú\\s]+)"
     ],
     "valor_parcela": [
-      "Operação\\s*Selecionada[\\s\\S]*?VIr\\.\\s*Parc\\.\\s*([\\d\\.]+,[\\d]{2})"
+      "Operação Selecionada[\\s\\S]*?VIr\\. Parc\\.\\s*([\\d\\.]+,[\\d]{2})"
+    ],
+    "total_de_parcelas_blacklist": [
+      "Qtd\\.\\s*Parcelas\\s*[:\\-]?\\s*([\\d]+)"
     ],
     "cidade": [
-      "Cidade:\\s*([A-Za-zÀ-ÿ\\-\\s]+?)\\s*(?:U\\.F\\.|CEP:|\\n)"
+      "Cidade:\\s*([A-Za-zÀ-ÿ\\s\\-]+)(?=\\s+U\\.F\\.|\\s|$)"
     ]
   }
 }

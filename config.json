@@ -5,7 +5,7 @@
                 "accents": false
     },
     "memory_file": "data/memory.json",
-    "mode": "smart",
+    "mode": "pro",
     "output_filename":"teste.json",
     "llm": {        
         "model_name": "gpt-5-mini",

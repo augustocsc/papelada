@@ -206,6 +206,14 @@ async def main(args) -> int:
                 print(f"Extraction results saved to {output_file_path}")
         except Exception as e:
             print(f"Error saving results to output file {output_file_path}: {e}")
+        
+        finally:  # Garante que a memória seja apagada, mesmo em caso de erro
+            if memory_path and memory_path.exists():
+                try:
+                    os.remove(memory_path)
+                    print(f"Memory file {memory_path} deleted.")
+                except Exception as e:
+                    print(f"Warning: unable to delete memory file {memory_path}: {e}")
             
     return 0
 
