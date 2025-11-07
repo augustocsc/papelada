@@ -6,7 +6,7 @@
       "nome": "JOANA D'ARC",
       "inscricao": "101943",
       "seccional": "PR",
-      "subsecao": "CONSELHO SECCIONAL - PARANÁ",
+      "subsecao": "Inscrição Seccional Subseção",
       "categoria": "SUPLEMENTAR",
       "endereco_profissional": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
       "telefone_profissional": null,
@@ -33,7 +33,7 @@
       "nome": "SON GOKU",
       "inscricao": "101943",
       "seccional": "PR",
-      "subsecao": "CONSELHO SECCIONAL - PARANÁ",
+      "subsecao": "Inscrição Seccional Subseção",
       "categoria": "SUPLEMENTAR",
       "telefone_profissional": "null",
       "situacao": "SITUAÇÃO REGULAR"
@@ -45,11 +45,11 @@
     "extracted_data": {
       "data_base": "05/09/2025",
       "data_verncimento": "12/10/2025",
-      "quantidade_parcelas": "null",
+      "quantidade_parcelas": null,
       "produto": "CONSIGNADO",
       "sistema": "CONSIGNADO",
-      "tipo_de_operacao": "null",
-      "tipo_de_sistema": "null"
+      "tipo_de_operacao": null,
+      "tipo_de_sistema": null
     }
   },
   {
@@ -68,7 +68,7 @@
     "pdf_path": "tela_sistema_3.pdf",
     "extracted_data": {
       "data_referencia": "04/02/2021",
-      "selecao_de_parcelas": "pendente",
+      "selecao_de_parcelas": "96",
       "total_de_parcelas": "96"
     }
   }

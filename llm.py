@@ -39,37 +39,21 @@ class LLMExtractor:
             self.regex_extr_['prompt'] = prompts_data.get(self.regex_extr_['prompt'])
 
         # Mapeamento de 'reasoning' e 'temperature' (código mantido)
-        if self.regex_extr_["reasoning"] <= 0:
-                self.regex_extr_["reasoning"] = "minimal"
-        elif self.regex_extr_["reasoning"] <= 0.33:
-                self.regex_extr_["reasoning"] = "low"
-        elif self.regex_extr_["reasoning"] <= 0.66:
-                self.regex_extr_["reasoning"] = "medium"
-        else:
-                self.regex_extr_["reasoning"] = "high"
-            
-        if self.data_extr_["reasoning"] <= 0:
-                self.data_extr_["reasoning"] = "minimal"
-        elif self.data_extr_["reasoning"] <= 0.33:
-                self.data_extr_["reasoning"] = "low"
-        elif self.data_extr_["reasoning"] <= 0.66:
-                self.data_extr_["reasoning"] = "medium"
-        else:
-                self.data_extr_["reasoning"] = "high"
-
-        if self.regex_extr_["temperature"] <=0:
-             self.regex_extr_["temperature"] = "low"
-        elif self.regex_extr_["temperature"] <= 0.5:
-             self.regex_extr_["temperature"] = "medium"
-        else:
-             self.regex_extr_["temperature"] = "high"
+        def map_value_to_level(value):
+            if value <= 0:
+                return "minimal" if 'reasoning' in key else "low"
+            elif value <= 0.33:
+                return "low"
+            elif value <= 0.66:
+                return "medium"
+            else:
+                return "high"
         
-        if self.data_extr_["temperature"] <=0:
-             self.data_extr_["temperature"] = "low"
-        elif self.data_extr_["temperature"] <= 0.5:
-             self.data_extr_["temperature"] = "medium"
-        else:
-             self.data_extr_["temperature"] = "high"
+        # Mapeamento de 'reasoning' e 'temperature'
+        for config_key in ["regex_extr_", "data_extr_"]:
+            for key in ["reasoning", "temperature"]:
+                config = getattr(self, config_key)
+                config[key] = map_value_to_level(config[key])
 
     def _build_prompt(self, task: dict) -> str:
 
