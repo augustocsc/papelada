@@ -29,7 +29,7 @@ def load_memory(path: Path, clean_start: bool = False) -> dict:
         return {}
     
 # --- run MODIFICADO: Implementa Lógica "Pro" Avançada ---
-async def run(cfg: dict, extr_schema: list, processed_pdfs: dict, memory: dict, client):
+async def run(cfg: dict, extr_schema: list, processed_pdfs: dict, memory: dict, client, memory_lock: asyncio.Lock):
     """
     Executa o processo de extração com um agendador dinâmico de 3 filas
     baseado na assinatura de campos e no estado da memória (Warm/Cold).
@@ -37,7 +37,7 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: dict, memory: dict, 
     
     all_results_dict = {} # Usar um dict para manter a ordem original no final
     background_tasks = [] 
-    memory_lock = asyncio.Lock()
+    #memory_lock = asyncio.Lock()
     
     total_run_start_time = time.perf_counter()
 
