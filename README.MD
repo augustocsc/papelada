@@ -12,149 +12,176 @@ _________   _...._               _________   _...._           
 '-----------'          \ \._,\ '/'-----------'                                    \ \._,\ '/             \ \._,\ '/ 
                         `--'  `"                                                   `--'  `"               `--'  `"  
 ```
-Papelada - Desafio Enter AI Fellowship
+
+
+# Papelada - Desafio Enter AI Fellowship
+
 Este repositório contém a minha solução para o "Take Home Project" da Enter AI Fellowship. O objetivo central era criar uma solução de extração de dados de PDFs que fosse rápida (menos de 10 segundos por requisição), barata (minimizando custos de LLM), e precisa (acima de 80%), sem conhecer os labels ou schemas de extração antecipadamente.
 
-Atualizações
-Novo: API de Extração! O projeto agora pode ser executado como um servidor FastAPI de alta performance. Esta API gerencia o estado (memória, config) na inicialização, lida com processamento de lotes concorrentes e expõe a lógica do orquestrador via HTTP.
+## Atualizações
 
-Orquestrador Inteligente ("Modo Pro"): A lógica de execução foi otimizada com um agendador dinâmico de 3 filas. Ele agora analisa o lote e o estado da memória para separar trabalhos "Warm" (paralelos), "Cold Orphans" (paralelos com aprendizado) e "Cold Groups" (sequenciais de Professor/Aluno) para maximizar o throughput e o aprendizado.
+- **Novo: API de Extração!** O projeto agora pode ser executado como um servidor FastAPI de alta performance. Esta API gerencia o estado (memória, config) na inicialização, lida com processamento de lotes concorrentes e expõe a lógica do orquestrador via HTTP.
 
-Geração de Regex em Segundo Plano: O sistema desacopla a extração de dados da fase de aprendizado. A API retorna os dados extraídos quase instantaneamente, enquanto as chamadas de LLM para criar e validar regras são agendadas de forma não-bloqueante.
+- **Orquestrador Inteligente ("Modo Pro"):** A lógica de execução foi otimizada com um agendador dinâmico de 3 filas. Ele agora analisa o lote e o estado da memória para separar trabalhos "Warm" (paralelos), "Cold Orphans" (paralelos com aprendizado) e "Cold Groups" (sequenciais de Professor/Aluno) para maximizar o throughput e o aprendizado.
 
-A Solução: Abordagem Híbrida "Smart"
+- **Geração de Regex em Segundo Plano:** O sistema desacopla a extração de dados da fase de aprendizado. A API retorna os dados extraídos quase instantaneamente, enquanto as chamadas de LLM para criar e validar regras são agendadas de forma não-bloqueante.
+
+## A Solução: Abordagem Híbrida "Smart"
+
 Para atender aos requisitos conflitantes de velocidade, custo e precisão, desenvolvi uma arquitetura híbrida que "aprende" com o tempo. A estratégia principal é evitar chamadas ao LLM sempre que possível, tratando-as como um último recurso para aprendizado, e não como a principal ferramenta de extração.
 
-O núcleo da solução é um orquestrador (orchestrator.py) que opera em três modos (standard, smart, pro) definidos no config.json. O fluxo de processamento é o seguinte:
+O núcleo da solução é um orquestrador (`orchestrator.py`) que opera em três modos (standard, smart, pro) definidos no `config.json`. O fluxo de processamento é o seguinte:
 
-Carregar Memória: O sistema primeiro carrega um arquivo de "memória" (data/memory.json). Este arquivo armazena regras de regex validadas que foram geradas em execuções anteriores.
+1. **Carregar Memória:** O sistema primeiro carrega um arquivo de "memória" (`data/memory.json`). Este arquivo armazena regras de regex validadas que foram geradas em execuções anteriores.
 
-Pré-Análise e Agendamento (Modo Pro): O orquestrador analisa todo o lote de entrada e o compara com a memória. Ele então categoriza cada trabalho:
+2. **Pré-Análise e Agendamento (Modo Pro):** O orquestrador analisa todo o lote de entrada e o compara com a memória. Ele então categoriza cada trabalho:
+   - **Warm Start (Regras Existem):** Estes são colocados na fila paralela rápida.
+   - **Cold Start (Órfãos):** Arquivos únicos no lote. Vão para uma fila paralela de aprendizado.
+   - **Cold Start (Grupos):** Arquivos idênticos que precisam aprender. Vão para la fila sequencial "Professor/Aluno".
 
-Warm Start (Regras Existem): Estes são colocados na fila paralela rápida.
+3. **Aplicar Regras Conhecidas:** O `extractor.py` tenta preencher o schema usando as regras de regex em memória. Esta etapa é quase instantânea e tem custo zero.
 
-Cold Start (Órfãos): Arquivos únicos no lote. Vão para uma fila paralela de aprendizado.
+4. **Identificar Lacunas e Executar "Professor" (Cold Start):** O sistema identifica os campos `null`. Para grupos "Cold Start", ele executa um arquivo ("o professor") e espera.
 
-Cold Start (Grupos): Arquivos idênticos que precisam aprender. Vão para la fila sequencial "Professor/Aluno".
+5. **LLM (Extração de Dados):** O "professor" (ou qualquer arquivo "cold") faz uma chamada ao LLM (`llm.py`) para obter os dados que faltam.
 
-Aplicar Regras Conhecidas: O extractor.py tenta preencher o schema usando as regras de regex em memória. Esta etapa é quase instantânea e tem custo zero.
+6. **LLM (Geração de Regex):** Em segundo plano (`asyncio.create_task`), o sistema agenda uma segunda chamada ao LLM para gerar uma regra de regex robusta que poderia ter encontrado esse dado.
 
-Identificar Lacunas e Executar "Professor" (Cold Start): O sistema identifica os campos null. Para grupos "Cold Start", ele executa um arquivo ("o professor") e espera.
+7. **Executar "Alunos":** Assim que o "professor" termina, todos os "alunos" (arquivos idênticos) são executados em paralelo, beneficiando-se imediatamente das regras recém-aprendidas (ou em processo de aprendizado).
 
-LLM (Extração de Dados): O "professor" (ou qualquer arquivo "cold") faz uma chamada ao LLM (llm.py) para obter os dados que faltam.
-
-LLM (Geração de Regex): Em segundo plano (asyncio.create_task), o sistema agenda uma segunda chamada ao LLM para gerar uma regra de regex robusta que poderia ter encontrado esse dado.
-
-Executar "Alunos": Assim que o "professor" termina, todos os "alunos" (arquivos idênticos) são executados em paralelo, beneficiando-se imediatamente das regras recém-aprendidas (ou em processo de aprendizado).
-
-Validar e Salvar: A tarefa em segundo plano valida a nova regex. Se for válida, um asyncio.Lock protege a memória compartilhada enquanto a nova regra é salva em data/memory.json.
+8. **Validar e Salvar:** A tarefa em segundo plano valida a nova regex. Se for válida, um `asyncio.Lock` protege a memória compartilhada enquanto a nova regra é salva em `data/memory.json`.
 
 Este sistema "acumula conhecimento" a cada execução. Na primeira vez que vê um label "carteira_oab", ele depende do LLM. Na segunda vez, ele já usa as regex aprendidas, tornando o processo mais rápido e barato.
 
-Arquitetura do Projeto
+## Arquitetura do Projeto
+
 A solução é dividida nos seguintes componentes principais:
 
-api_main.py (NOVO): O ponto de entrada do servidor FastAPI. Gerencia o estado da aplicação (carregamento de memória e cliente OpenAI na inicialização), lida com uploads de arquivos e expõe o orquestrador através de um endpoint /extract/ seguro e assíncrono.
+- **`api_main.py` (NOVO):** O ponto de entrada do servidor FastAPI. Gerencia o estado da aplicação (carregamento de memória e cliente OpenAI na inicialização), lida com uploads de arquivos e expõe o orquestrador através de um endpoint `/extract/` seguro e assíncrono.
 
-main.py (LEGACY): O ponto de entrada original da aplicação para execução via CLI. Responsável por interpretar argumentos de linha de comando e iniciar o orchestrator.run.
+- **`main.py` (LEGACY):** O ponto de entrada original da aplicação para execução via CLI. Responsável por interpretar argumentos de linha de comando e iniciar o `orchestrator.run`.
 
-orchestrator.py: O "cérebro" principal. Implementa a lógica de agendamento de 3 filas (Warm, Cold Orphan, Cold Group) e coordena o Extractor.
+- **`orchestrator.py`:** O "cérebro" principal. Implementa a lógica de agendamento de 3 filas (Warm, Cold Orphan, Cold Group) e coordena o Extractor.
 
-extractor.py: O "trabalhador". Gerencia o memory.json (leitura), aplica regras de regex conhecidas (_apply) e orquestra as chamadas ao LLMExtractor para preencher lacunas e agendar o aprendizado de novas regras.
+- **`extractor.py`:** O "trabalhador". Gerencia o `memory.json` (leitura), aplica regras de regex conhecidas (`_apply`) e orquestra as chamadas ao `LLMExtractor` para preencher lacunas e agendar o aprendizado de novas regras.
 
-llm.py: A camada de abstração para a API da OpenAI. Constrói os prompts dinamicamente e executa as chamadas assíncronas para extração e geração de regex.
+- **`llm.py`:** A camada de abstração para a API da OpenAI. Constrói os prompts dinamicamente e executa as chamadas assíncronas para extração e geração de regex.
 
-pipeline.py: (Anteriormente pdf_pipeline.py) Contém todas as funções utilitárias para lidar com os PDFs (extração com pdfplumber, limpeza e normalização).
+- **`pipeline.py`:** (Anteriormente `pdf_pipeline.py`) Contém todas as funções utilitárias para lidar com os PDFs (extração com pdfplumber, limpeza e normalização).
 
-utils.py: Funções auxiliares para carregar e salvar JSONs.
+- **`utils.py`:** Funções auxiliares para carregar e salvar JSONs.
 
-config.json: Arquivo central de configuração. Define o modo de operação (standard, smart, pro), caminhos de arquivos e parâmetros de LLM.
+- **`config.json`:** Arquivo central de configuração. Define o modo de operação (standard, smart, pro), caminhos de arquivos e parâmetros de LLM.
 
-Como Utilizar
+## Como Utilizar
+
 A aplicação pode ser executada de duas formas: como um servidor API (recomendado) ou como um script CLI.
 
-Modo 1: Execução via API (Servidor)
+### Modo 1: Execução via API (Servidor)
+
 Este é o modo de execução principal, permitindo o processamento de lotes via HTTP.
 
-Instalação (API): Adicione as novas dependências de servidor ao seu requirements.txt e instale-as:
+#### Instalação (API):
 
-fastapi
-uvicorn[standard]
-python-multipart
-Bash
+Adicione as novas dependências de servidor ao seu `requirements.txt` e instale-as:
 
+```bash
+fastapi uvicorn[standard] python-multipart
+```
+
+```bash
 pip install -r requirements.txt
-Configuração (API):
+```
 
-Crie um arquivo .env na raiz do projeto.
+#### Configuração (API):
 
-Adicione sua chave da OpenAI:
+1. Crie um arquivo `.env` na raiz do projeto.
+2. Adicione sua chave da OpenAI:
 
+```
 OPENAI_API_KEY="sk-..."
-Adicione uma chave de API secreta para proteger seu endpoint:
+```
 
+3. Adicione uma chave de API secreta para proteger seu endpoint:
+
+```
 PAPELADA_API_KEY="seu-token-secreto-aqui-123"
-Execução (API): Inicie o servidor Uvicorn a partir da raiz do projeto:
+```
 
-Bash
+#### Execução (API):
 
+Inicie o servidor Uvicorn a partir da raiz do projeto:
+
+```bash
 uvicorn api_main:app --host 0.0.0.0 --port 8000 --reload
-O servidor estará disponível em http://localhost:8000.
+```
 
-Como Usar (API): Envie uma requisição POST para o endpoint /extract/ usando multipart/form-data.
+O servidor estará disponível em `http://localhost:8000`.
 
-Header: X-API-Key: "seu-token-secreto-aqui-123"
+#### Como Usar (API):
 
-Body (FormData):
+Envie uma requisição POST para o endpoint `/extract/` usando `multipart/form-data`.
 
-extraction_schema: O seu ficheiro .json que descreve o lote (ex: results/teste.json).
+- **Header:** `X-API-Key: "seu-token-secreto-aqui-123"`
+- **Body (FormData):**
+  - `extraction_schema`: O seu ficheiro `.json` que descreve o lote (ex: `results/teste.json`).
+  - `pdf_files`: Um ou mais ficheiros `.pdf` (ex: `oab_1.pdf`, `oab_2.pdf`, ...).
 
-pdf_files: Um ou mais ficheiros .pdf (ex: oab_1.pdf, oab_2.pdf, ...).
+#### Exemplo de Comando curl:
 
-Exemplo de Comando curl:
-
-Bash
-
+```bash
 curl -X POST "http://127.0.0.1:8000/extract/" \
 -H "X-API-Key: seu-token-secreto-aqui-123" \
 -F "extraction_schema=@results/teste.json" \
 -F "pdf_files=@caminho/para/oab_1.pdf" \
 -F "pdf_files=@caminho/para/oab_2.pdf" \
 -F "pdf_files=@caminho/para/tela_sistema_1.pdf"
-Modo 2: Execução via CLI (Script)
+```
+
+### Modo 2: Execução via CLI (Script)
+
 Este é o modo original para testes locais.
 
-Instalação (CLI):
+#### Instalação (CLI):
 
-Bash
-
+```bash
 pip install -r requirements.txt
-Configuração (CLI):
+```
 
-Configure seu .env com a OPENAI_API_KEY.
+#### Configuração (CLI):
 
-Execução (CLI): O script main.py requer um schema de extração e um caminho para os PDFs.
+Configure seu `.env` com a `OPENAI_API_KEY`.
 
-Bash
+#### Execução (CLI):
 
+O script `main.py` requer um schema de extração e um caminho para os PDFs.
+
+```bash
 python main.py --extraction_schema [CAMINHO_PARA_SCHEMA.json] --pdf_path [CAMINHO_PARA_PDFS_OU_PASTA]
-Exemplo de Comando:
+```
 
-Bash
+#### Exemplo de Comando:
 
+```bash
 python main.py -e "results/teste.json" -p "caminho/para/meus_pdfs/"
-Resultados: Os resultados da extração (de ambos os modos) serão salvos em um arquivo JSON dentro da pasta results/, conforme definido no config.json (ex: results/teste.json).
+```
 
-Respondendo aos Desafios do Projeto
-Reduzir chamadas ao LLM e Minimizar Custo: Conseguido através do sistema de memória (memory.json) e do agendamento "Warm Start", que pula o aprendizado se as regras já existem.
+#### Resultados:
 
-Manter 80%+ de Acurácia: Conseguido através da validação de regex e da blacklist com "motivo da falha", que ensina o LLM a não repetir erros.
+Os resultados da extração (de ambos os modos) serão salvos em um arquivo JSON dentro da pasta `results/`, conforme definido no `config.json` (ex: `results/teste.json`).
 
-Responder em <10s: Conseguido através da execução em asyncio e da separação da geração de regex (lenta) em tarefas de fundo não-bloqueantes. O "caminho feliz" (Warm Start) é quase instantâneo.
+## Respondendo aos Desafios do Projeto
 
-Lidar com Variabilidade de Layout: Conseguido através da "Assinatura de Trabalho" (label + field_set). O orquestrador agrupa trabalhos idênticos, permitindo que variações de schema (como B3 vs B1) sejam tratadas como trabalhos completamente diferentes, cada um aprendendo suas próprias regras.
+- **Reduzir chamadas ao LLM e Minimizar Custo:** Conseguido através do sistema de memória (`memory.json`) e do agendamento "Warm Start", que pula o aprendizado se as regras já existem.
 
-Comentários Finais e Lições Aprendidas
+- **Manter 80%+ de Acurácia:** Conseguido através da validação de regex e da blacklist com "motivo da falha", que ensina o LLM a não repetir erros.
+
+- **Responder em <10s:** Conseguido através da execução em asyncio e da separação da geração de regex (lenta) em tarefas de fundo não-bloqueantes. O "caminho feliz" (Warm Start) é quase instantâneo.
+
+- **Lidar com Variabilidade de Layout:** Conseguido através da "Assinatura de Trabalho" (label + field_set). O orquestrador agrupa trabalhos idênticos, permitindo que variações de schema (como B3 vs B1) sejam tratadas como trabalhos completamente diferentes, cada um aprendendo suas próprias regras.
+
+## Comentários Finais e Lições Aprendidas
+
 Fiquei muito surpreso com o desafio para o Fellowship. De fato, como é dito no enunciado, OCR virou commodity e isso faz novos produtos surgirem a partir disso. Como Filipe comentou no QA, esse problema poderia ser resolvido apenas passando os dados e o comando para um LLM. De fato, o GPT-5 mini sozinho funciona melhor do que todas as tentativas que fiz para gerar uma expressão regular confiável e replicável em outros documentos.
 
 Infelizmente meu "extra mile" não vai aparecer nos commits do projeto, porque fui muleque e gastei muito tempo brincando com a LLM. Só que a LLM errada. Para não correr o risco de gastar crédito à toa, comecei o projeto utilizando o Gemini, um modelo compatível com o do projeto. Depois de alguns ajustes ele estava me respondendo super bem e me senti confiante em avançar com o projeto.
@@ -167,8 +194,9 @@ Depois de ajustar os dois prompts principais (para extração dos dados e criaç
 
 Ouso dizer que para um caso de uso real essa aplicação pode realmente ser eficiente, desde que se abra algumas brechas nos requisitos como:
 
-Remanejar a ordem de execução: já que desde o começo pensei no projeto linearmente. Poder reordenar a ordem para processar primeiro documentos com mais campos que se repetem e processar labels em paralelo ajudaria na velocidade.
+- Remanejar a ordem de execução: já que desde o começo pensei no projeto linearmente. Poder reordenar a ordem para processar primeiro documentos com mais campos que se repetem e processar labels em paralelo ajudaria na velocidade.
 
-Melhorar o pipeline de geração de regex: essa parte é a mais instável e que pode prejudicar o meu resultado, pois para economizar tokens tentei uma solução mais direta, não gastando muito tempo na geração.
+- Melhorar o pipeline de geração de regex: essa parte é a mais instável e que pode prejudicar o meu resultado, pois para economizar tokens tentei uma solução mais direta, não gastando muito tempo na geração.
 
 Continuarei trabalhando no projeto, pois achei um desafio muito legal. Então se você é um avaliador, não me odeie por ter outros commits pós a data :D
+```
