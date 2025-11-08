@@ -44,7 +44,7 @@
     "pdf_path": "tela_sistema_1.pdf",
     "extracted_data": {
       "data_base": "05/09/2025",
-      "data_verncimento": "03/09/2025",
+      "data_verncimento": "12/10/2025",
       "quantidade_parcelas": "null",
       "produto": "CONSIGNADO",
       "sistema": "CONSIGNADO",
@@ -56,9 +56,9 @@
     "label": "tela_sistema",
     "pdf_path": "tela_sistema_2.pdf",
     "extracted_data": {
-      "pesquisa_por": "cliente",
-      "pesquisa_tipo": "cpf",
-      "sistema": "consignado",
+      "pesquisa_por": "CLIENTE",
+      "pesquisa_tipo": "CPF",
+      "sistema": "CONSIGNADO",
       "valor_parcela": "2.372,64",
       "cidade": "Mozarlândia"
     }

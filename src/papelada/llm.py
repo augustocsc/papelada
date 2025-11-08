@@ -5,11 +5,7 @@ import json
 from openai import OpenAIError
 
 class LLMExtractor:
-    """
-    Encapsula a lógica para geração de Regex estruturada via LLM (OpenAI Nativo)
-    e a subsequente aplicação das regexes para extração de dados.
-    """
-
+    # ... (código do __init__ inalterado para esta seção) ...
     def __init__(self, cfg: dict, campos_a_extrair: list, text_to_analyze: str, client=None, failed_regexes: list = None):
         """
         Inicializa o extrator, carregando o schema e o prompt.
@@ -37,7 +33,7 @@ class LLMExtractor:
         # Mapeamento de 'reasoning' e 'temperature' (código mantido)
         def map_value_to_level(value):
             if value <= 0:
-                return "minimal" if 'reasoning' in key else "low"
+                return "minimal" if 'reasoning' in locals() else "low"
             elif value <= 0.33:
                 return "low"
             elif value <= 0.66:
@@ -49,7 +45,11 @@ class LLMExtractor:
         for config_key in ["regex_extr_", "data_extr_"]:
             for key in ["reasoning", "temperature"]:
                 config = getattr(self, config_key)
-                config[key] = map_value_to_level(config[key])
+                if key == "reasoning":
+                    config[key] = map_value_to_level(config[key]) if config[key] > 0 else "minimal"
+                else:
+                    config[key] = map_value_to_level(config[key])
+
 
     def _build_prompt(self, task: dict) -> str:
 
@@ -75,13 +75,23 @@ class LLMExtractor:
             except Exception as e:
                 raise Exception(f"Error reading prompt file: {e}")
             
-            # --- Inclusão da Blacklist no Prompt ---
-            failed_regex_str = "\n".join(f"- {r}" for r in self.failed_regexes) if self.failed_regexes else "Nenhuma regex falhou anteriormente para este campo."
+            # --- MUDANÇA: Inclusão da Blacklist com Razão ---
+            failed_regex_str = ""
+            if self.failed_regexes:
+                for entry in self.failed_regexes:
+                    if isinstance(entry, dict) and entry.get('regex'):
+                        # Novo formato de blacklist: dicionário com regex e razão
+                        failed_regex_str += f"- Regex: `{entry.get('regex')}`\n  - Falha: {entry.get('reason')}\n"
+                    elif isinstance(entry, str):
+                         # Compatibilidade com blacklists antigas (apenas strings)
+                        failed_regex_str += f"- Regex: `{entry}`\n  - Falha: Motivo desconhecido (formato antigo/simples).\n"
+            else:
+                failed_regex_str = "Nenhuma regex falhou anteriormente para este campo."
             
             return prompt_content.format(
                 schema = self.campos_a_extrair,
                 text=self.text_to_analyze,
-                failed_regexes=failed_regex_str # Novo parâmetro
+                failed_regexes=failed_regex_str # Novo parâmetro formatado
             )
         else:
             raise ValueError(f"Unknown task type: {task['task']}")
@@ -89,6 +99,7 @@ class LLMExtractor:
     # Timeout todas as chamadas
     LLM_TIMEOUT = 20.0 
 
+    # ... (o restante do código dos métodos generate_regex_json e extract_data_json permanece inalterado) ...
     async def generate_regex_json(self) -> dict:
         """Chama o LLM usando o cliente nativo da OpenAI para gerar a lista JSON."""
         

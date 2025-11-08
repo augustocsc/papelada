@@ -25,6 +25,7 @@ def parse_argrs():
         parser.add_argument("--config", "-c", default="config.json", help="Path to config JSON file (default: config.json)")
         return parser.parse_args()
 
+
 async def main(args) -> int:
     memory_path = None 
     try:
@@ -32,16 +33,9 @@ async def main(args) -> int:
         json_path = args.extraction_schema
         extr_schema = load_json(json_path)
         
-        memory_path = Path(cfg.get("memory_file"))
-        memory_data = load_memory(memory_path)
-        
-        try:
-            memory_path.parent.mkdir(parents=True, exist_ok=True)
-            if not memory_path.exists():
-                with open(memory_path, 'w', encoding='utf-8') as f:
-                     json.dump(memory_data, f, indent=2)
-        except Exception as e:
-            print(f"Warning: unable to create cache file {memory_path}: {e}")
+        memory_path = Path(cfg.get("memory_file", "data/memory.json"))
+        clean_memory_on_start = cfg.get("clean_memory_on_start", False)
+        memory_data = load_memory(memory_path, clean_start=clean_memory_on_start)
 
         results_dir = Path("results")
         results_dir.mkdir(parents=True, exist_ok=True)

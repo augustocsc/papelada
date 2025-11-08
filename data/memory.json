@@ -1,72 +1,140 @@
 {
   "carteira_oab": {
+    "nome_blacklist": [
+      {
+        "regex": "^(?:\\s*)?([A-ZÀ-Ü'\\-\\s]+)",
+        "reason": "Valor extraído ('JOANA D'ARC\nI') não bate com o esperado ('JOANA D'ARC')."
+      }
+    ],
     "nome": [
-      "\\b([A-ZÀ-Ý'\\s]+?)\\b\\s*(?:\\r?\\n|\\s*)?\\s*Inscrição\\s+Seccional\\s+Subseção",
-      "^(?:\\s*)?([A-ZÀ-Ý][A-ZÀ-Ý\\s]+?)(?=\\s*\\n\\s*Inscrição|\\s*\\n)"
+      "^\\s*([A-ZÁÀÂÃÄÇÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÑ\\s]+)\\s*$",
+      "^(?:\\s*)?([A-ZÁÉÍÓÚÇÂÊÔÃÕÑ\\s]+)\\s*\\n\\s*Inscrição\\s+Seccional\\s+Subseção"
     ],
     "inscricao": [
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?=\\s+[A-Z]{2}\\s|\\s|\\n|$)",
-      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?([\\d]+)\\b",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?=\\s+[A-Z]{2}\\b|\\s|\\n)",
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?:\\s|$)",
       "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)"
     ],
     "seccional_blacklist": [
-      "Seccional\\s*([A-Z]{2})",
-      "Seccional\\s*([A-Z]{2})(?=\\b|\\s|$)",
-      "Seccional\\s*([^\\S\\r\\n]*?)?\\b([A-Z]{2})\\b"
+      {
+        "regex": "Seccional\\s*([\u0000-\\s]*?)\\b([A-Z]{2})\\b",
+        "reason": "Regex não encontrou correspondência (no match)."
+      },
+      {
+        "regex": "Seccional\\s*([A-Za-z]{2})",
+        "reason": "Valor extraído ('Su') não bate com o esperado ('PR')."
+      },
+      {
+        "regex": "Seccional\\s*([A-Z]{2})",
+        "reason": "Regex não encontrou correspondência (no match)."
+      }
     ],
     "subsecao_blacklist": [
-      "Seccional\\s*[-A-Za-zÀ-ÖØ-öø-ÿ\\s]+\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\s-]+)",
-      "Subseção\\s*([A-Za-zÀ-ÿ0-9\\s\\-]+)",
-      "Subse[cç][aã]o\\s*[\\s\\S]*?([A-Za-zÀ-ÿ\\s\\-]+?)(?:\\n|\\r|\\r\\n|\\s{2,}|$)"
+      {
+        "regex": "Seccional\\s*Subseção[\\s\\S]*?([A-ZÀ-Ý\\s\\-]+)(?:\\s|\\n|$)",
+        "reason": "Valor extraído ('PR CONSELHO SECCIONAL - PARANÁ\nSUPLEMENTAR') não bate com o esperado ('CONSELHO SECCIONAL - PARANÁ')."
+      },
+      {
+        "regex": "Subseção\\s*[\\s\\S]*?\\s*([A-Za-zÀ-ÿ\\s\\-]+)(?=\\s|\\n|$)",
+        "reason": "Valor extraído ('PR CONSELHO SECCIONAL - PARANÁ\nSUPLEMENTAR\nEndereco Profissional\nK\nTelefone Profissional\nSITUAÇÃO REGULAR') não bate com o esperado ('CONSELHO SECCIONAL - PARANÁ')."
+      },
+      {
+        "regex": "Subseção\\s*([A-ZÀ-Ÿ0-9\\s\\-]+)",
+        "reason": "Valor extraído ('101943 PR CONSELHO SECCIONAL - PARANÁ\nSUPLEMENTAR\nE') não bate com o esperado ('CONSELHO SECCIONAL - PARANÁ')."
+      }
     ],
     "categoria_blacklist": [
-      "Inscrição[\\s\\S]*?\\n\\s*([A-Za-zÀ-ú\\s]+)\\s*\\n",
-      "CONSELHO\\s+SECCIONAL\\s*-?\\s*[A-ZÁÉÍÓÚÂÊÔÇ\\s]*\\s*\\n\\s*([A-Za-zÀ-ÿ]+)"
+      {
+        "regex": "Inscrição Seccional[\\s\\S]*?\\n\\s*([A-Za-zÀ-ÿ\\s]+)\\s*\\n",
+        "reason": "Valor extraído ('SUPLEMENTAR\nEndereço Profissional') não bate com o esperado ('SUPLEMENTAR')."
+      },
+      {
+        "regex": "CONSELHO SECCIONAL[\\s\\S]*?\\s([A-Za-zÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÃÕÇáéíóúàèìòùâêîôûãõç\\s]+)\\s",
+        "reason": "Valor extraído ('PARANÁ\nSUPLEMENTAR\nEndereço Profissional\nAVENIDA') não bate com o esperado ('SUPLEMENTAR')."
+      }
     ],
     "categoria": [
-      "Inscrição Seccional(?:[^\n]*\n){0,2}\\s*([A-Za-zÀ-ÿ]+)\\b"
+      "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\n\\s*([A-Za-zÀ-ÖØ-öø-ÿ]+)\\b"
     ],
     "endereco_profissional_blacklist": [
-      "Endereço Profissional\\s*([A-Za-zÀ-Ÿ0-9\\.,ººªª\\-\\s]+?)(?:\\r?\\n|\\r){1,}[A-Za-z].*|Endereço Profissional\\s*([\\s\\S]*?)(?=\\r?\\nTelefone Profissional|\\r?\\nSITUAÇÃO REGULAR|$)",
-      "Endereço Profissional\\s*[\\s\\S]*?([A-Za-zÀ-ÖØ-öø-ÿ0-9.,ººªª\\s\\-]+?(?:\\s*\\d{5}-?\\d{3}|\\s*\\d{8})?)"
+      {
+        "regex": "Endereço Profissional\\s*([\\s\\S]*?)(?:\\r?\\n\\s*Telefone Profissional|\\r?\\n\\s*SITUAÇÃO REGULAR|$)",
+        "reason": "Valor extraído ('AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista') não bate com o esperado ('AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300')."
+      },
+      {
+        "regex": "Endereço Profissional\\s*([A-Za-z0-9À-ÿ\\s,\\.ºª°Nn°/\\-]+(?:[\\s\\S]*?\\d{5}-?\\d{3}|\\d{8})?)",
+        "reason": "Valor extraído ('AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista\nSÃO PAULO - SP\n01310300\nTelefone Profissional\nSITUAÇÃO REGULAR') não bate com o esperado ('AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300')."
+      }
     ],
     "situacao_blacklist": [
-      "SITUAÇÃO\\s*([A-ZÀ-Ÿ\\s]+)",
-      "SITUAÇÃO\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\s]+)",
-      "SITUAÇÃO\\s*([\u0000-ÇÁÉÍÓÚÀÈÌÒÙâêîôûãõçÁÀÉÈÍÌÓÒÚÙáàéèíìóòúùÄäÖöÜüÑñ\\w\\s\\-\\/\\.]+?)"
+      {
+        "regex": "SITUAÇÃO\\s*([A-ZÀ-Ú\\s]+)",
+        "reason": "Valor extraído ('REGULAR') não bate com o esperado ('SITUAÇÃO REGULAR')."
+      },
+      {
+        "regex": "SITUAÇÃO\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\s]+)",
+        "reason": "Valor extraído ('REGULAR') não bate com o esperado ('SITUAÇÃO REGULAR')."
+      },
+      {
+        "regex": "SITUAÇÃO\\s*([A-ZÀ-Ú0-9\\s]+)",
+        "reason": "Valor extraído ('REGULAR') não bate com o esperado ('SITUAÇÃO REGULAR')."
+      }
     ]
   },
   "tela_sistema": {
+    "pesquisa_por_blacklist": [
+      {
+        "regex": "Pesquisar por:\\s*([A-Za-zÀ-ÿ\\s]+)",
+        "reason": "Valor extraído ('Tipo') não bate com o esperado ('CLIENTE')."
+      }
+    ],
+    "data_referencia_blacklist": [
+      {
+        "regex": "Data Base\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})",
+        "reason": "Regex não encontrou correspondência (no match)."
+      }
+    ],
     "data_base": [
       "Data Referência:\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
     ],
-    "pesquisa_por_blacklist": [
-      "Pesquisar por:\\s*([A-Za-zÀ-ú\\s]+)"
-    ],
-    "data_verncimento_blacklist": [
-      "Data Referência\\s*[:\\-]?\\s*([0-3]?\\d/[01]?\\d/\\d{4})"
-    ],
-    "data_referencia_blacklist": [
-      "Data Base\\s*([\\d]{2}/[\\d]{2}/[\\d]{4})"
+    "total_de_parcelas_blacklist": [
+      {
+        "regex": "Qtd\\. Parcelas\\s*([\\d]+)",
+        "reason": "Regex não encontrou correspondência (no match)."
+      }
     ],
     "pesquisa_tipo_blacklist": [
-      "Pesquisar por:\\s*Tipo:\\s*([A-Za-z]+)"
+      {
+        "regex": "Pesquisar por:\\s*Tipo:\\s*([A-Za-zÀ-ÿ\\s]+)",
+        "reason": "Valor extraído ('Sistema') não bate com o esperado ('CPF')."
+      }
     ],
-    "sistema_blacklist": [
-      "Sistema\\s*[:\\-]?\\s*([A-Za-zÀ-ÿ\\s]+)",
-      "Sistema\\s*[:\\-]?\\s*([A-Za-zÀ-ÿ0-9\\s]+)"
+    "data_verncimento": [
+      "Vcto\\s*mais\\s*antigo[\\s\\S]*?([0-3]?\\d\\/[01]?\\d\\/\\d{4})"
+    ],
+    "sistema": [
+      "Sistema\\s*[:\\-]?\\s*([A-Za-zÀ-ÿ0-9\\s]+?)\\s*(?:\\n|VIr\\.|Cidade:|$)"
     ],
     "produto_blacklist": [
-      "Vcto mais antigo[\\s\\S]*?\\b([A-ZÇÁÉÍÓÚÂÊÔÃÕÙÜÑ\\s]+)\\b[\\s\\S]*?\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})"
+      {
+        "regex": "Vcto mais antigo[\\s\\S]*?\\b([A-Za-zÀ-ÿ\\s]+)\\b[\\s\\S]*?\\d{1,3}(?:\\.\\d{3})*,\\d{2}",
+        "reason": "Valor extraído ('Dias atraso Sistema Saldo Vencido Saldo a Vencer Total Geral') não bate com o esperado ('CONSIGNADO')."
+      }
     ],
-    "total_de_parcelas_blacklist": [
-      "Qtd\\. Parcelas\\s*([\\d]+)"
+    "sistema_blacklist": [
+      {
+        "regex": "Sistema\\s*[:\\-]?\\s*([A-ZÀ-Ý\\s]+)",
+        "reason": "Valor extraído ('S') não bate com o esperado ('CONSIGNADO')."
+      }
     ],
     "valor_parcela": [
       "Operação Selecionada[\\s\\S]*?VIr\\. Parc\\.\\s*([\\d\\.]+,[\\d]{2})"
     ],
-    "cidade": [
-      "Cidade:\\s*([A-Za-zÀ-ÿ\\s\\-]+?)\\s*(?:U\\.F\\.|CEP:|$)"
+    "cidade_blacklist": [
+      {
+        "regex": "Cidade:\\s*([A-Za-zÀ-ÖØ-öø-ÿ\\s\\-]+)",
+        "reason": "Valor extraído ('Mozarlândia U') não bate com o esperado ('Mozarlândia')."
+      }
     ]
   }
 }
