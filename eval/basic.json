@@ -1,0 +1,75 @@
+[
+  {
+    "label": "carteira_oab",
+    "pdf_path": "oab_1.pdf",
+    "extracted_data": {
+      "nome": "JOANA D'ARC",
+      "inscricao": "101943",
+      "seccional": "PR",
+      "subsecao": "CONSELHO SECCIONAL - PARANÁ",
+      "categoria": "SUPLEMENTAR",
+      "endereco_profissional": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
+      "telefone_profissional": "null",
+      "situacao": "SITUAÇÃO REGULAR"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "pdf_path": "oab_2.pdf",
+    "extracted_data": {
+      "nome": "LUIS FILIPE ARAUJO AMARAL",
+      "inscricao": "101943",
+      "seccional": "PR",
+      "subsecao": "CONSELHO SECCIONAL - PARANÁ",
+      "categoria": "SUPLEMENTAR",
+      "endereco_profissional": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
+      "situacao": "SITUAÇÃO REGULAR"
+    }
+  },
+  {
+    "label": "carteira_oab",
+    "pdf_path": "oab_3.pdf",
+    "extracted_data": {
+      "nome": "SON GOKU",
+      "inscricao": "101943",
+      "seccional": "PR",
+      "subsecao": "CONSELHO SECCIONAL - PARANÁ",
+      "categoria": "SUPLEMENTAR",
+      "telefone_profissional": "null",
+      "situacao": "SITUAÇÃO REGULAR"
+    }
+  },
+  {
+    "label": "tela_sistema",
+    "pdf_path": "tela_sistema_1.pdf",
+    "extracted_data": {
+      "data_base": "05/09/2025",
+      "data_verncimento": "12/10/2025",
+      "quantidade_parcelas": "null",
+      "produto": "CONSIGNADO",
+      "sistema": "CONSIGNADO",
+      "tipo_de_operacao": "null",
+      "tipo_de_sistema": "null"
+    }
+  },
+  {
+    "label": "tela_sistema",
+    "pdf_path": "tela_sistema_2.pdf",
+    "extracted_data": {
+      "pesquisa_por": "CLIENTE",
+      "pesquisa_tipo": "CPF",
+      "sistema": "CONSIGNADO",
+      "valor_parcela": "2.372,64",
+      "cidade": "Mozarlândia"
+    }
+  },
+  {
+    "label": "tela_sistema",
+    "pdf_path": "tela_sistema_3.pdf",
+    "extracted_data": {
+      "data_referencia": "04/02/2021",
+      "selecao_de_parcelas": "null",
+      "total_de_parcelas": "96"
+    }
+  }
+]

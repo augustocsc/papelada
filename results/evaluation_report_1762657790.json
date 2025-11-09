@@ -1,0 +1,267 @@
+{
+  "accuracy_summary": {
+    "overall_accuracy": "83.78%",
+    "correct_fields": 31,
+    "total_fields": 37
+  },
+  "cost_and_performance_summary": {
+    "total_documents": 6,
+    "total_llm_calls": 26,
+    "total_llm_tokens": 31517,
+    "total_llm_time_s": 81.24,
+    "avg_tokens_per_doc": 5252.83,
+    "avg_time_per_doc_s": 13.54
+  },
+  "metrics_breakdown": {
+    "llm_data_calls": 6,
+    "llm_data_tokens": 2883,
+    "llm_data_time_s": 15.604197400156409,
+    "llm_regex_calls": 20,
+    "llm_regex_tokens": 28634,
+    "llm_regex_time_s": 65.63997119991109,
+    "total_llm_calls": 26,
+    "total_llm_tokens": 31517,
+    "total_llm_time_s": 81.2441686000675
+  },
+  "detailed_comparison": [
+    {
+      "pdf_path": "oab_1.pdf",
+      "comparison": {
+        "nome": {
+          "predicted": "SUPLEMENTAR",
+          "expected": "JOANA D'ARC",
+          "correct": false
+        },
+        "inscricao": {
+          "predicted": "101943",
+          "expected": "101943",
+          "correct": true
+        },
+        "seccional": {
+          "predicted": "PR",
+          "expected": "PR",
+          "correct": true
+        },
+        "subsecao": {
+          "predicted": "PR CONSELHO SECCIONAL - PARANÁ",
+          "expected": "CONSELHO SECCIONAL - PARANÁ",
+          "correct": false
+        },
+        "categoria": {
+          "predicted": "SUPLEMENTAR",
+          "expected": "SUPLEMENTAR",
+          "correct": true
+        },
+        "endereco_profissional": {
+          "predicted": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
+          "expected": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
+          "correct": true
+        },
+        "telefone_profissional": {
+          "predicted": "null",
+          "expected": "null",
+          "correct": true
+        },
+        "situacao": {
+          "predicted": "SITUAÇÃO REGULAR",
+          "expected": "SITUAÇÃO REGULAR",
+          "correct": true
+        }
+      }
+    },
+    {
+      "pdf_path": "oab_2.pdf",
+      "comparison": {
+        "nome": {
+          "predicted": "LUIS FILIPE ARAUJO AMARAL",
+          "expected": "LUIS FILIPE ARAUJO AMARAL",
+          "correct": true
+        },
+        "inscricao": {
+          "predicted": "101943",
+          "expected": "101943",
+          "correct": true
+        },
+        "seccional": {
+          "predicted": "PR",
+          "expected": "PR",
+          "correct": true
+        },
+        "subsecao": {
+          "predicted": "PARANÁ",
+          "expected": "CONSELHO SECCIONAL - PARANÁ",
+          "correct": false
+        },
+        "categoria": {
+          "predicted": "SUPLEMENTAR",
+          "expected": "SUPLEMENTAR",
+          "correct": true
+        },
+        "endereco_profissional": {
+          "predicted": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
+          "expected": "AVENIDA PAULISTA, Nº 2300 andar Pilotis, Bela Vista, SÃO PAULO - SP, 01310300",
+          "correct": true
+        },
+        "situacao": {
+          "predicted": "SITUAÇÃO REGULAR",
+          "expected": "SITUAÇÃO REGULAR",
+          "correct": true
+        }
+      }
+    },
+    {
+      "pdf_path": "oab_3.pdf",
+      "comparison": {
+        "nome": {
+          "predicted": "SON GOKU",
+          "expected": "SON GOKU",
+          "correct": true
+        },
+        "inscricao": {
+          "predicted": "101943",
+          "expected": "101943",
+          "correct": true
+        },
+        "seccional": {
+          "predicted": "PR",
+          "expected": "PR",
+          "correct": true
+        },
+        "subsecao": {
+          "predicted": "PARANÁ",
+          "expected": "CONSELHO SECCIONAL - PARANÁ",
+          "correct": false
+        },
+        "categoria": {
+          "predicted": "SUPLEMENTAR",
+          "expected": "SUPLEMENTAR",
+          "correct": true
+        },
+        "telefone_profissional": {
+          "predicted": null,
+          "expected": "null",
+          "correct": false
+        },
+        "situacao": {
+          "predicted": "SITUAÇÃO REGULAR",
+          "expected": "SITUAÇÃO REGULAR",
+          "correct": true
+        }
+      }
+    },
+    {
+      "pdf_path": "tela_sistema_1.pdf",
+      "comparison": {
+        "data_base": {
+          "predicted": "05/09/2025",
+          "expected": "05/09/2025",
+          "correct": true
+        },
+        "data_verncimento": {
+          "predicted": "03/09/2025",
+          "expected": "12/10/2025",
+          "correct": false
+        },
+        "quantidade_parcelas": {
+          "predicted": "null",
+          "expected": "null",
+          "correct": true
+        },
+        "produto": {
+          "predicted": "CONSIGNADO",
+          "expected": "CONSIGNADO",
+          "correct": true
+        },
+        "sistema": {
+          "predicted": "CONSIGNADO",
+          "expected": "CONSIGNADO",
+          "correct": true
+        },
+        "tipo_de_operacao": {
+          "predicted": "null",
+          "expected": "null",
+          "correct": true
+        },
+        "tipo_de_sistema": {
+          "predicted": "null",
+          "expected": "null",
+          "correct": true
+        }
+      }
+    },
+    {
+      "pdf_path": "tela_sistema_2.pdf",
+      "comparison": {
+        "pesquisa_por": {
+          "predicted": "CLIENTE",
+          "expected": "CLIENTE",
+          "correct": true
+        },
+        "pesquisa_tipo": {
+          "predicted": "CPF",
+          "expected": "CPF",
+          "correct": true
+        },
+        "sistema": {
+          "predicted": "CONSIGNADO",
+          "expected": "CONSIGNADO",
+          "correct": true
+        },
+        "valor_parcela": {
+          "predicted": "2.372,64",
+          "expected": "2.372,64",
+          "correct": true
+        },
+        "cidade": {
+          "predicted": "Mozarlândia",
+          "expected": "Mozarlândia",
+          "correct": true
+        }
+      }
+    },
+    {
+      "pdf_path": "tela_sistema_3.pdf",
+      "comparison": {
+        "data_referencia": {
+          "predicted": "04/02/2021",
+          "expected": "04/02/2021",
+          "correct": true
+        },
+        "selecao_de_parcelas": {
+          "predicted": "null",
+          "expected": "null",
+          "correct": true
+        },
+        "total_de_parcelas": {
+          "predicted": "96",
+          "expected": "96",
+          "correct": true
+        }
+      }
+    }
+  ],
+  "execution_config": {
+    "mode": "smart",
+    "llm_config": {
+      "model_name": "gpt-5-mini",
+      "prompt_file": "prompt_templates.json",
+      "regex_extr_": {
+        "task": "regex",
+        "prompt": "pt_data_long_prompt_trust_reasoning",
+        "reasoning": 0,
+        "temperature": 0.2
+      },
+      "data_extr_": {
+        "task": "data",
+        "prompt": "pt_regex_short_prompt_trust",
+        "reasoning": 0,
+        "temperature": 0.2
+      }
+    },
+    "normalization_options": {
+      "flat": false,
+      "lowercase": false,
+      "accents": false
+    }
+  }
+}
