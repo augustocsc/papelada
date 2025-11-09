@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papelada - Extração de Dados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Um pequeno spinner customizado */
+        .spinner {
+            border-top-color: transparent;
+            border-right-color: transparent;
+            animation: spin 0.4s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white w-full max-w-3xl p-6 sm:p-8 rounded-xl shadow-lg">
+        
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-gray-800">Papelada</h1>
+            <span class="text-sm font-medium text-gray-500">v1.0 (API Mode)</span>
+        </div>
+
+        <form id="upload-form" class="space-y-6">
+
+            <div>
+                <label for="api-key" class="block text-sm font-medium text-gray-700">Chave da API (X-API-Key)</label>
+                <input type="password" id="api-key" placeholder="Cole o seu PAPELADA_API_KEY do .env" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+                <label for="schema-file" class="block text-sm font-medium text-gray-700">1. Ficheiro de Schema (.json)</label>
+                <input type="file" id="schema-file" accept=".json" class="mt-1 block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100 cursor-pointer">
+            </div>
+
+            <div>
+                <label for="pdf-files" class="block text-sm font-medium text-gray-700">2. Ficheiros PDF (múltiplos)</label>
+                <input type="file" id="pdf-files" accept=".pdf" multiple class="mt-1 block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100 cursor-pointer">
+            </div>
+            
+            <div id="file-list" class="text-xs text-gray-500 space-y-1 hidden">
+                <p id="schema-file-name" class="font-medium"></p>
+                <p id="pdf-file-names"></p>
+            </div>
+
+            <div class="pt-2 space-y-3">
+                <div id="message-area" class="text-sm rounded-md p-3 hidden"></div>
+
+                <button type="submit" id="extract-btn" class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                    <span id="btn-text">Extrair Dados</span>
+                    <div id="btn-spinner" class="spinner w-5 h-5 ml-3 border-2 border-white rounded-full hidden"></div>
+                </button>
+            </div>
+
+        </form>
+
+        <div id="results-container" class="mt-8 hidden">
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">Resultados da Extração</h2>
+            <pre class="bg-gray-900 text-green-400 text-sm p-4 rounded-md overflow-x-auto"><code id="results-output">...</code></pre>
+        </div>
+    </div>
+
+    <script>
+        // --- Selecionar Elementos do DOM ---
+        const uploadForm = document.getElementById('upload-form');
+        const apiKeyInput = document.getElementById('api-key');
+        const schemaFileInput = document.getElementById('schema-file');
+        const pdfFilesInput = document.getElementById('pdf-files');
+        const extractBtn = document.getElementById('extract-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const messageArea = document.getElementById('message-area');
+        
+        // Feedback de nome de ficheiro
+        const fileListDiv = document.getElementById('file-list');
+        const schemaFileName = document.getElementById('schema-file-name');
+        const pdfFileNames = document.getElementById('pdf-file-names');
+
+        // Resultados
+        const resultsContainer = document.getElementById('results-container');
+        const resultsOutput = document.getElementById('results-output');
+
+        // URL da API (ajuste se a sua API estiver noutro local)
+        const API_URL = "http://127.0.0.1:8000/extract/";
+
+        // --- Lógica de Feedback de Ficheiros ---
+        schemaFileInput.addEventListener('change', () => {
+            if (schemaFileInput.files.length > 0) {
+                schemaFileName.textContent = `Schema: ${schemaFileInput.files[0].name}`;
+                fileListDiv.classList.remove('hidden');
+            }
+        });
+        
+        pdfFilesInput.addEventListener('change', () => {
+            if (pdfFilesInput.files.length > 0) {
+                pdfFileNames.textContent = `${pdfFilesInput.files.length} PDF(s) selecionados.`;
+                fileListDiv.classList.remove('hidden');
+            }
+        });
+
+
+        // --- Lógica de Submissão ---
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Impede o envio tradicional do formulário
+            
+            const apiKey = apiKeyInput.value;
+            const schemaFile = schemaFileInput.files[0];
+            const pdfFiles = pdfFilesInput.files;
+
+            // 1. Validação
+            if (!apiKey || !schemaFile || pdfFiles.length === 0) {
+                showMessage("Por favor, preencha a chave da API, selecione um schema e pelo menos um PDF.", "error");
+                return;
+            }
+
+            // 2. Preparar Estado de Carregamento (Loading)
+            setLoading(true);
+
+            // 3. Construir o FormData
+            const formData = new FormData();
+            formData.append("extraction_schema", schemaFile);
+            for (let i = 0; i < pdfFiles.length; i++) {
+                formData.append("pdf_files", pdfFiles[i]);
+            }
+
+            // 4. Fazer a Chamada à API (fetch)
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': apiKey // Envia a chave da API no header
+                    },
+                    body: formData
+                });
+
+                // Tenta ler o JSON, quer seja um sucesso ou um erro da API
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // Erro da API (ex: 400, 403, 500)
+                    throw new Error(data.detail || `Erro ${response.status}: ${response.statusText}`);
+                }
+
+                // 5. Sucesso
+                showMessage("Extração concluída com sucesso!", "success");
+                resultsOutput.textContent = JSON.stringify(data, null, 2); // 'null, 2' formata o JSON
+                resultsContainer.classList.remove('hidden');
+
+            } catch (error) {
+                // 6. Falha (Erro de rede ou da API)
+                console.error("Falha na extração:", error);
+                showMessage(`Erro: ${error.message}`, "error");
+                resultsContainer.classList.add('hidden');
+            } finally {
+                // 7. Limpar Estado de Carregamento
+                setLoading(false);
+            }
+        });
+
+        // --- Funções Auxiliares ---
+        function setLoading(isLoading) {
+            if (isLoading) {
+                extractBtn.disabled = true;
+                btnText.textContent = "A processar...";
+                btnSpinner.classList.remove('hidden');
+                messageArea.classList.add('hidden');
+            } else {
+                extractBtn.disabled = false;
+                btnText.textContent = "Extrair Dados";
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        function showMessage(message, type = "error") {
+            messageArea.textContent = message;
+            if (type === "error") {
+                messageArea.className = "text-sm rounded-md p-3 bg-red-100 text-red-800";
+            } else {
+                messageArea.className = "text-sm rounded-md p-3 bg-green-100 text-green-800";
+            }
+            messageArea.classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>     

@@ -158,6 +158,7 @@ async def run(cfg: dict, extr_schema: list, processed_pdfs: dict, memory: dict, 
     
     # Fila 1 (Warm) é forçada ao modo "standard" (sem aprendizado, pois já sabe)
     for schema in parallel_warm_jobs:
+        print(f"✅  Using memory rules for PDF: {schema['pdf_path']} (Label: {schema['label']})")
         parallel_tasks.append(process_schema(schema, "standard"))
         
     # Fila 2 (Órfãos) usa o global_mode (para aprender para o *futuro*)
