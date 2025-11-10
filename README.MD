@@ -86,7 +86,7 @@ pip install -r requirements.txt
 Crie um arquivo `.env` na raiz do projeto e defina as chaves de API. O frontend irá tentar usar a chave `PAPELADA_API_KEY` por padrão para autenticação.
 
 ```
-PAPELADA_API_KEY="seu-token-secreto-aqui-123"
+PAPELADA_API_KEY=15d3b1c6-ece7-4483-913d-e16c73eb7320"
 OPENAI_API_KEY="sk-..." # Opcional: Se omitido, o usuário deve inserir no frontend.
 ```
 
