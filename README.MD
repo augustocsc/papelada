@@ -77,11 +77,15 @@ A aplicação deve ser executada como um servidor API, permitindo o uso tanto vi
 
 1.  **Instalação:** Instale as dependências necessárias:
     ```bash
+    cd papelada
+    python3 -m venv .venv
     pip install -r requirements.txt
+    source .venv/bin/activate
+    pip install -e .
     ```
 2.  **Configuração:** Crie um arquivo `.env` na raiz do projeto e defina as chaves de API:
     ```
-    PAPELADA_API_KEY="seu-token-secreto-aqui-123" 
+    PAPELADA_API_KEY="pode-ser-qualquer-coisa-relaxa" 
     OPENAI_API_KEY="sk-..." # Opcional: Se omitido, o usuário deve inserir no frontend.
     ```
 3.  **Iniciar o Servidor:** Inicie o servidor Uvicorn a partir da raiz do projeto:
