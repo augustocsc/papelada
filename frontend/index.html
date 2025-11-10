@@ -5,117 +5,362 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Papelada - Extração & Avaliação</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fontes Google para estilo --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-        .spinner { border-top-color: transparent; border-right-color: transparent; animation: spin 0.4s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        /* Oculta o input[type=file] original */
-        .file-input-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
-        .file-input-label { cursor: pointer; display: inline-block; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.875rem; }
-        .card { background-color: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+        /* --- Neobrutalist Style Definitions --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700; /* Bolder by default */
+        }
+
+        .neo-card {
+            background-color: white;
+            border: 4px solid #000;
+            /* The signature Neobrutalist shadow */
+            box-shadow: 8px 8px 0 0 #000;
+            border-radius: 8px;
+        }
         
-        /* Estilos para a barra de progresso */
-        #progress-bar { transition: width 0.3s ease-in-out; }
+        /* Estilo para o Título PAPELADA (Bebas Neue + Sombra forte) */
+        .neo-title {
+            font-family: 'Bebas Neue', sans-serif;
+            text-shadow: 6px 6px 0 #000; /* Sombra preta MAIS FORTE */
+            line-height: 1; /* Tira o espaçamento excessivo da fonte */
+        }
+
+
+        .neo-button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            font-weight: 900; /* Extra bold */
+            text-transform: uppercase;
+            border: 4px solid #000;
+            box-shadow: 5px 5px 0 0 #000;
+            border-radius: 8px;
+            transition: all 0.1s ease-in-out;
+            cursor: pointer;
+            white-space: nowrap; /* Evita quebra de linha nos botões de controle */
+        }
+
+        .neo-button:hover, .neo-button:focus {
+            /* On hover, "press" the button */
+            box-shadow: 2px 2px 0 0 #000;
+            transform: translate(3px, 3px);
+        }
+        
+        .neo-button:disabled {
+            background-color: #a1a1aa; /* zinc-400 */
+            color: #52525b; /* zinc-600 */
+            box-shadow: none;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .neo-input {
+            border: 4px solid #000;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+        }
+        .neo-input:focus {
+            outline: none;
+            border-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 0 4px #3b82f6; /* blue-500 ring */
+        }
+        
+        .neo-radio-label {
+            background-color: white;
+            border: 4px solid #000;
+            box-shadow: 5px 5px 0 0 #000;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.1s ease-in-out;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .neo-radio-label:hover {
+            box-shadow: 2px 2px 0 0 #000;
+            transform: translate(3px, 3px);
+        }
+        
+        /* Style for the selected radio button's label */
+        input[type="radio"]:checked + .neo-radio-label {
+            background-color: #bfdbfe; /* blue-200 */
+            box-shadow: 2px 2px 0 0 #000;
+            transform: translate(3px, 3px);
+        }
+
+        .file-input-hidden {
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
+        }
+
+        /* --- Custom Scrollbar (for terminal) --- */
+        #progress-log-container::-webkit-scrollbar {
+            width: 12px;
+        }
+        #progress-log-container::-webkit-scrollbar-track {
+            background: #000;
+        }
+        #progress-log-container::-webkit-scrollbar-thumb {
+            background-color: #60a5fa; /* blue-400 */
+            border: 2px solid #000;
+        }
+        
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 50;
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Tooltip Container */
+        .mode-label-container {
+            position: relative;
+        }
+        
+        .mode-tooltip {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 250px;
+            padding: 8px;
+            margin-top: 10px;
+            background-color: #fff;
+            border: 4px solid #000;
+            box-shadow: 5px 5px 0 0 #000;
+            border-radius: 8px;
+            z-index: 20;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            font-size: 0.875rem;
+            font-weight: 700;
+        }
+        
+        .mode-tooltip.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* --- Botão (?) discreto --- */
+        .mode-help-btn {
+            background-color: transparent;
+            color: #000; /* Preto */
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            cursor: pointer;
+            border: none;
+            box-shadow: none;
+            line-height: 1;
+            transition: all 0.1s;
+        }
+        
+        .mode-help-btn:hover {
+            color: #3b82f6; /* Azul no hover */
+            transform: scale(1.1); /* Efeito leve */
+        }
+
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4 text-black">
+    
+    <!-- TÍTULO E SUBTÍTULO FORA DA CAIXA (NOVO DESIGN DE LOGO) -->
+    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-center z-40">
+        <h1 class="text-8xl text-blue-600 neo-title uppercase">Papelada</h1>
+        <p class="text-lg font-bold text-slate-800 -mt-2">Devagar também é Pressa</p>
+    </div>
+    <!-- FIM TÍTULO/SUBTÍTULO -->
 
-    <div class="bg-white w-full max-w-4xl p-6 sm:p-8 rounded-xl shadow-lg">
+    <div class="bg-white w-full max-w-4xl p-6 sm:p-8 rounded-xl shadow-lg neo-card mt-32 sm:mt-36">
         
-        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-            <h1 class="text-3xl font-bold text-gray-800">Papelada</h1>
-            <span id="app-version" class="text-sm font-medium text-gray-500">v2.1 (WebSocket)</span>
+        <!-- HEADER INTERNO DA CAIXA -->
+        <div class="mb-6 pb-4 border-b-4 border-black">
+            <div class="flex justify-between items-start">
+                
+                <!-- Botão Ajuda (Esquerda) -->
+                <button id="help-btn" class="neo-button bg-slate-200 text-sm py-2 px-4">Ajuda</button>
+
+                <!-- Espaço Central Vazio (Títulos foram movidos) -->
+                <div class="flex-grow mx-4">
+                    <!-- Mantido vazio para espaçamento -->
+                </div>
+
+                <!-- Controles (Direita) -->
+                <div class="flex space-x-2">
+                    
+                    <!-- Dropdown Memória (NOVO) -->
+                    <div class="relative inline-block text-left" id="memory-dropdown-container">
+                        <button type="button" id="memory-dropdown-btn" class="neo-button bg-slate-700 text-white text-sm py-2 px-4">
+                            Memória <span class="ml-1">▼</span>
+                        </button>
+                        <!-- Dropdown Content -->
+                        <div id="memory-dropdown-content" class="absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white neo-card border-black p-2 hidden z-10 space-y-2" style="box-shadow: 4px 4px 0 0 #000;">
+                            <button id="clear-memory-btn" class="neo-button bg-red-600 text-white w-full py-2 px-3 text-sm" style="box-shadow: 2px 2px 0 0 #000;">Limpar Memória</button>
+                            <button id="download-memory-btn" class="neo-button bg-slate-600 text-white w-full py-2 px-3 text-sm" style="box-shadow: 2px 2px 0 0 #000;">Baixar Memória</button>
+                            <input type="file" id="load-memory-input" accept=".json" class="file-input-hidden">
+                            <label for="load-memory-input" class="neo-button bg-green-600 text-white w-full block text-sm py-2 px-3" style="box-shadow: 2px 2px 0 0 #000;">Carregar Memória</label>
+                        </div>
+                    </div>
+
+                    <!-- Botão Encerrar Sessão -->
+                    <button id="logout-btn-top" class="neo-button bg-red-600 text-white text-sm py-2 px-4">Encerrar Sessão</button>
+                </div>
+            </div>
         </div>
+        <!-- FIM HEADER INTERNO -->
 
         <!-- ÁREA DE MENSAGEM GLOBAL -->
-        <div id="message-area" class="text-sm rounded-md p-3 hidden mb-4"></div>
+        <div id="message-area" class="text-sm p-4 border-4 border-black rounded-lg hidden mb-4 font-bold"></div>
 
         <!-- 
           TELA 1: CONFIGURAÇÃO DE SESSÃO 
         -->
         <div id="screen-config" class="space-y-6">
-            <h2 class="text-2xl font-semibold text-gray-800">Configurar Sessão</h2>
-            <p class="text-gray-600">Para começar, insira sua chave de API. Ela será usada para todas as requisições.</p>
-            <div>
-                <label for="api-key" class="block text-sm font-medium text-gray-700">Chave da API (X-API-Key)</label>
-                <input type="password" id="api-key" placeholder="Cole o seu PAPELADA_API_KEY do .env" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <h2 class="text-2xl sm:text-3xl font-black uppercase text-center">Configurar Sessão</h2>
+            <p class="text-center font-bold">Insira as chaves de API necessárias para operar o sistema.</p>
+            
+            <!-- VISTA 1: QUICK START (CHAVES SALVAS) -->
+            <div id="config-quick-start" class="hidden space-y-6">
+                <div class="neo-card bg-slate-50 p-4 space-y-2">
+                    <h3 class="text-xl font-black uppercase text-center mb-4">Chaves de API Configuradas</h3>
+                    <p class="text-sm"><strong>Papelada API Key:</strong> <span id="status-papelada-key" class="font-bold text-green-600">...</span></p>
+                    <p class="text-sm"><strong>OpenAI API Key:</strong> <span id="status-openai-key" class="font-bold text-slate-500">...</span></p>
+                </div>
+                
+                <button id="quick-start-btn" class="neo-button bg-blue-600 text-white w-full">
+                    Iniciar Nova Sessão
+                </button>
+                <button id="show-full-form-btn" class="neo-button bg-slate-200 w-full text-sm">
+                    Atualizar Chaves
+                </button>
             </div>
-            <button id="config-save-btn" class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
-                Iniciar Sessão
-            </button>
+            
+            <!-- VISTA 2: FULL FORM (CHAVES AUSENTES OU ATUALIZAÇÃO) -->
+            <div id="config-full-form" class="hidden space-y-4">
+                 <!-- Campo Papelada API Key -->
+                <div>
+                    <label for="papelada-api-key" class="block text-sm font-black uppercase mb-2">Papelada API Key (X-API-Key)</label>
+                    <input type="password" id="papelada-api-key" placeholder="Chave de segurança do backend (Obrigatório)" class="neo-input w-full">
+                </div>
+                
+                <!-- Campo OpenAI API Key -->
+                <div>
+                    <label for="openai-api-key" class="block text-sm font-black uppercase mb-2">OpenAI API Key (Opcional)</label>
+                    <input type="password" id="openai-api-key" placeholder="Sua chave LLM (Substitui a chave do ambiente)" class="neo-input w-full">
+                </div>
+
+                <button id="config-save-btn" class="neo-button bg-blue-600 text-white w-full">
+                    Salvar e Iniciar
+                </button>
+                <button id="cancel-full-form-btn" class="neo-button bg-slate-200 w-full text-sm hidden">
+                    Cancelar
+                </button>
+            </div>
+            
         </div>
 
         <!-- 
           TELA 2: UPLOAD E MODO DE EXECUÇÃO
         -->
-        <div id="screen-main" class="hidden space-y-6">
+        <div id="screen-main" class="hidden space-y-8">
             <!-- Este <form> NÃO será submetido; é apenas para layout -->
             <form id="upload-form" class="space-y-6" onsubmit="return false;">
+                
                 <!-- Seleção de Modo -->
                 <div>
-                    <h3 class="text-lg font-medium text-gray-700">Modo de Execução</h3>
-                    <fieldset class="mt-2">
+                    <h3 class="text-xl font-black uppercase mb-4">1. Modo de Execução</h3>
+                    <fieldset>
                         <legend class="sr-only">Escolha o modo de execução</legend>
-                        <div class="flex space-x-4">
-                            <label for="mode-standard" class="flex items-center">
-                                <input id="mode-standard" value="standard" name="execution-mode" type="radio" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
-                                <span class="ml-3 block text-sm font-medium text-gray-700">Papelzinho (Standard)</span>
-                            </label>
-                            <label for="mode-smart" class="flex items-center">
-                                <input id="mode-smart" value="smart" name="execution-mode" type="radio" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300" checked>
-                                <span class="ml-3 block text-sm font-medium text-gray-700">Papelada (Smart)</span>
-                            </label>
-                            <label for="mode-pro" class="flex items-center">
-                                <input id="mode-pro" value="pro" name="execution-mode" type="radio" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
-                                <span class="ml-3 block text-sm font-medium text-gray-700">Papelão (Pro)</span>
-                            </label>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            
+                            <!-- Papelzinho -->
+                            <div class="mode-label-container">
+                                <input id="mode-standard" value="standard" name="execution-mode" type="radio" class="hidden peer">
+                                <label for="mode-standard" class="neo-radio-label flex justify-between items-center">
+                                    Papelzinho
+                                    <span class="mode-help-btn ml-2" data-mode="standard">(?)</span>
+                                </label>
+                                <div class="mode-tooltip" id="tooltip-standard">Papelzinho: O modo mais rápido e barato. Não tenta aprender novas regras de regex, apenas aplica as regras existentes na memória. Uso recomendado para documentos repetitivos com regras já validadas (Warm Start).</div>
+                            </div>
+
+                            <!-- Papelada -->
+                            <div class="mode-label-container">
+                                <input id="mode-smart" value="smart" name="execution-mode" type="radio" class="hidden peer" checked>
+                                <label for="mode-smart" class="neo-radio-label flex justify-between items-center">
+                                    Papelada
+                                    <span class="mode-help-btn ml-2" data-mode="smart">(?)</span>
+                                </label>
+                                <div class="mode-tooltip" id="tooltip-smart">Papelada (Smart): Modo padrão. Tenta aplicar regras existentes, mas usa o LLM para extrair dados ausentes. Se a extração do LLM for de alta confiança, ele tenta gerar uma nova regra de regex em SEGUNDO PLANO (aprendizado). Recomendado para lotes mistos.</div>
+                            </div>
+                            
+                            <!-- Papelão -->
+                            <div class="mode-label-container">
+                                <input id="mode-pro" value="pro" name="execution-mode" type="radio" class="hidden peer">
+                                <label for="mode-pro" class="neo-radio-label flex justify-between items-center">
+                                    Papelão
+                                    <span class="mode-help-btn ml-2" data-mode="pro">(?)</span>
+                                </label>
+                                <div class="mode-tooltip" id="tooltip-pro">Papelão (Pro): Modo estratégico e lento. Agrupa documentos idênticos. O primeiro (Professor) usa LLM e gera regras. Os seguintes (Alunos) usam as regras do professor imediatamente (aprendizado sequencial). Melhor para grandes lotes de documentos similares (Cold Start).</div>
+                            </div>
                         </div>
                     </fieldset>
                 </div>
                 
                 <!-- Upload de Ficheiros -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="schema-file" class="block text-sm font-medium text-gray-700">1. Ficheiro de Schema (.json)</label>
-                        <input type="file" id="schema-file" required accept=".json" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
-                    </div>
-                    <div>
-                        <label for="pdf-files" class="block text-sm font-medium text-gray-700">2. Ficheiros PDF (múltiplos)</label>
-                        <input type="file" id="pdf-files" required accept=".pdf" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
-                    </div>
-                </div>
-                
-                <!-- Ficheiro de Referência Opcional -->
                 <div>
-                    <label for="reference-file" class="block text-sm font-medium text-gray-700">3. Ficheiro de Referência (Opcional para Avaliação)</label>
-                    <input type="file" id="reference-file" accept=".json" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100 cursor-pointer">
-                </div>
-
-                <div id="file-list" class="text-xs text-gray-500 space-y-1 hidden">
-                    <p id="schema-file-name" class="font-medium"></p>
-                    <p id="pdf-file-names"></p>
+                    <h3 class="text-xl font-black uppercase mb-4">2. Ficheiros</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Schema -->
+                        <div class="text-center">
+                            <input type="file" id="schema-file" required accept=".json" class="file-input-hidden">
+                            <label for="schema-file" class="neo-button bg-blue-500 text-white w-full block">Carregar Schema</label>
+                            <span id="schema-file-name" class="text-xs font-bold mt-2 block truncate"></span>
+                        </div>
+                        <!-- PDFs -->
+                        <div class="text-center">
+                            <input type="file" id="pdf-files" required accept=".pdf" multiple class="file-input-hidden">
+                            <label for="pdf-files" class="neo-button bg-blue-500 text-white w-full block">Carregar PDFs</label>
+                            <span id="pdf-file-names" class="text-xs font-bold mt-2 block"></span>
+                        </div>
+                        <!-- Referência (Opcional) -->
+                        <div class="text-center">
+                            <input type="file" id="reference-file" accept=".json" class="file-input-hidden">
+                            <label for="reference-file" class="neo-button bg-slate-200 w-full block">Avaliação (Opcional)</label>
+                            <span id="reference-file-name" class="text-xs font-bold mt-2 block truncate"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Botão de Extração -->
-                <div class="pt-2">
-                    <button type="button" id="extract-btn" class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                <div class="pt-6">
+                    <button type="button" id="extract-btn" class="neo-button bg-blue-600 text-white w-full text-2xl">
                         Iniciar Extração
                     </button>
                 </div>
             </form>
             
-            <!-- Gerenciamento de Memória -->
-            <div class="pt-4 border-t border-gray-200">
-                <h3 class="text-lg font-medium text-gray-700 mb-3">Gerenciamento</h3>
-                <div class="flex flex-wrap gap-4">
-                    <button id="clear-memory-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Limpar Memória</button>
-                    <button id="download-memory-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">Baixar Memória</button>
-                    
-                    <label for="load-memory-input" class="file-input-label bg-green-600 text-white hover:bg-green-700">Carregar Memória</label>
-                    <input type="file" id="load-memory-input" accept=".json" class="file-input-hidden">
-                    
-                    <button id="logout-btn" class="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 ml-auto">Encerrar Sessão</button>
-                </div>
-            </div>
+            <!-- O bloco de Gerenciamento foi movido para o cabeçalho. -->
+            
         </div>
 
         <!-- 
@@ -124,25 +369,25 @@
         <div id="screen-progress" class="hidden space-y-6 py-12">
             
             <div class="flex justify-center items-center space-x-3">
-                <div class="spinner w-8 h-8 border-4 border-blue-600 rounded-full"></div>
-                <h2 class="text-2xl font-semibold text-gray-800">A processar...</h2>
+                <div class="spinner w-8 h-8 border-4 border-black rounded-full"></div>
+                <h2 class="text-2xl sm:text-3xl font-black uppercase">A processar...</h2>
             </div>
             
             <!-- Barra de Progresso -->
             <div>
-                <p id="progress-text" class="text-gray-600 text-center mb-2">Processando 0 / 0 arquivos...</p>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                <p id="progress-text" class="text-lg font-black text-center mb-2">Processando 0 / 0 arquivos...</p>
+                <div class="w-full bg-white border-4 border-black rounded-lg h-8 p-1">
+                    <div id="progress-bar" class="bg-blue-500 h-full rounded-sm border-2 border-black" style="width: 0%"></div>
                 </div>
             </div>
             
-            <!-- Log de Processamento -->
-            <div id="progress-log-container" class="w-full h-40 bg-gray-900 text-gray-300 text-sm font-mono p-4 rounded-md overflow-y-auto">
-                <p class="text-gray-500">A iniciar conexão WebSocket...</p>
+            <!-- Log de Processamento (Terminal) -->
+            <div id="progress-log-container" class="w-full h-48 bg-black text-slate-200 text-sm font-mono p-4 rounded-lg border-4 border-black overflow-y-auto">
+                <p class="text-neutral-500">A iniciar conexão WebSocket...</p>
                 <!-- Log será preenchido aqui -->
             </div>
 
-            <button id="cancel-btn" class="mt-6 mx-auto block px-6 py-2 border border-gray-300 text-base font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+            <button id="cancel-btn" class="neo-button bg-slate-200 mx-auto block">
                 Cancelar
             </button>
         </div>
@@ -152,63 +397,118 @@
           TELA 4: RESULTADOS
         -->
         <div id="screen-results" class="hidden space-y-6">
-            <h2 class="text-2xl font-semibold text-gray-800">Resultados da Extração</h2>
+            <h2 class="text-2xl sm:text-3xl font-black uppercase">Resultados da Extração</h2>
             
             <!-- Secção de Métricas e Avaliação -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Métricas de Execução</h3>
-                    <div id="metrics-output" class="text-sm text-gray-700 space-y-1">
-                        <p><strong>Tempo Total (Síncrono):</strong> <span id="metric-sync-time">...</span></p>
-                        <p><strong>Chamadas de LLM (Total):</strong> <span id="metric-llm-calls">...</span></p>
-                        <p><strong>Tokens de LLM (Total):</strong> <span id="metric-llm-tokens">...</span></p>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Métricas -->
+                <div class="neo-card bg-slate-50 p-4 space-y-2">
+                    <h3 class="text-lg font-black uppercase">Métricas de Execução</h3>
+                    <p><strong>Tempo Total (Síncrono):</strong> <span id="metric-sync-time">...</span></p>
+                    <p><strong>Chamadas de LLM (Total):</strong> <span id="metric-llm-calls">...</span></p>
+                    <p><strong>Tokens de LLM (Total):</strong> <span id="metric-llm-tokens">...</span></p>
                 </div>
-                <div id="report-container" class="bg-blue-50 p-4 rounded-lg shadow-inner hidden">
-                    <h3 class="text-lg font-semibold text-blue-900 mb-2">Relatório de Avaliação</h3>
-                    <div id="report-output" class="text-sm text-blue-800 space-y-1">
-                        <p><strong>Acurácia Geral:</strong> <span id="metric-accuracy">...</span></p>
-                        <p><strong>Corretos / Total:</strong> <span id="metric-correct-fields">...</span></p>
-                    </div>
+                <!-- Avaliação -->
+                <div id="report-container" class="neo-card bg-blue-200 p-4 space-y-2 hidden">
+                    <h3 class="text-lg font-black uppercase text-blue-900">Relatório de Avaliação</h3>
+                    <p><strong>Acurácia Geral:</strong> <span id="metric-accuracy">...</span></p>
+                    <p><strong>Corretos / Total:</strong> <span id="metric-correct-fields">...</span></p>
                 </div>
             </div>
 
             <!-- Botões de Download -->
             <div class="flex flex-wrap gap-4">
-                <button id="download-results-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Baixar Dados Extraídos (JSON)</button>
-                <button id="download-report-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 hidden">Baixar Relatório de Teste (JSON)</button>
-                <button id="back-to-main-btn" class="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 ml-auto">Nova Extração</button>
+                <button id="download-results-btn" class="neo-button bg-blue-500 text-white">Baixar Dados (JSON)</button>
+                <button id="download-report-btn" class="neo-button bg-green-600 text-white hidden">Baixar Relatório (JSON)</button>
+                <button id="back-to-main-btn" class="neo-button bg-slate-200 ml-auto">Nova Extração</button>
             </div>
 
             <!-- Filtro e Visualização de Cards -->
-            <div class="pt-4 border-t border-gray-200">
+            <div class="pt-6 border-t-4 border-black">
                 <div class="mb-4">
-                    <label for="filter-input" class="block text-sm font-medium text-gray-700">Filtrar por nome do PDF</label>
-                    <input type="text" id="filter-input" placeholder="ex: oab_1.pdf" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <label for="filter-input" class="block text-sm font-black uppercase mb-2">Filtrar Resultados</label>
+                    <input type="text" id="filter-input" placeholder="Filtrar por nome do PDF..." class="neo-input w-full">
                 </div>
                 
                 <!-- Contentor dos Cards -->
-                <div id="results-cards-container" class="space-y-4 max-h-96 overflow-y-auto p-2 bg-gray-50 rounded">
-                    <!-- Cards serão injetados aqui -->
+                <div id="results-cards-container" class="space-y-4 max-h-96 overflow-y-auto p-2 bg-slate-100 rounded-lg border-4 border-black">
+                    <p class="text-center font-bold">A carregar resultados...</p>
                 </div>
 
-                <!-- Visualizador de JSON (ao clicar no card) -->
-                <div id="json-viewer-container" class="mt-4 hidden">
-                    <h4 class="text-md font-semibold text-gray-800 mb-2">Dados do Card Selecionado:</h4>
-                    <pre class="bg-gray-900 text-green-400 text-sm p-4 rounded-md overflow-x-auto h-64"><code id="json-viewer-output">...</code></pre>
-                </div>
+                <!-- O container JSON antigo foi removido -->
             </div>
 
         </div>
     </div>
+    
+    <!-- MODAL DE AJUDA (NOVO) -->
+    <div id="help-modal-backdrop" class="modal-backdrop p-4">
+        <div class="neo-card bg-white w-full max-w-xl p-6 space-y-4">
+            <div class="flex justify-between items-start border-b-4 border-black pb-3">
+                <h3 class="text-2xl font-black uppercase">Como Funciona a Papelada?</h3>
+                <button id="close-help-modal-btn" class="neo-button bg-red-500 text-white px-3 py-1 text-sm font-bold">X</button>
+            </div>
+            
+            <div class="space-y-4">
+                <p>O sistema Papelada usa uma arquitetura de LLM híbrida para equilibrar **velocidade**, **custo** e **acurácia**.</p>
+                
+                <h4 class="text-lg font-black uppercase border-b border-black">O que você vê?</h4>
+                <ul class="list-disc list-inside space-y-2 text-sm">
+                    <li><strong>Extração Síncrona:</strong> O dado é extraído e você avança para a tela de resultados.</li>
+                    <li><strong>Processos em Segundo Plano:</strong> A avaliação de acurácia e o aprendizado de regras (LLM) continuam a rodar no backend para atualizar a memória.</li>
+                </ul>
 
+                <h4 class="text-lg font-black uppercase border-b border-black">Modos de Execução:</h4>
+                <div class="space-y-3">
+                    <div class="neo-card p-3 bg-slate-100">
+                        <strong class="font-black text-blue-700">Papelzinho (Standard):</strong> Extração mais rápida e barata. Apenas usa regras de memória existentes. Não aprende.
+                    </div>
+                    <div class="neo-card p-3 bg-blue-200">
+                        <strong class="font-black text-blue-700">Papelada (Smart):</strong> Modo padrão. Usa LLM para extrair dados ausentes e aprende novas regras em segundo plano (se houver alta confiança).
+                    </div>
+                    <div class="neo-card p-3 bg-slate-100">
+                        <strong class="font-black text-blue-700">Papelão (Pro):</strong> Modo lento e estratégico. Otimizado para grandes lotes similares. Um documento (Professor) aprende as regras, e os demais (Alunos) as usam imediatamente.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA VISUALIZAÇÃO DOS DADOS -->
+    <div id="data-modal-backdrop" class="modal-backdrop p-4">
+        <div id="data-modal" class="neo-card bg-white w-full max-w-lg p-6 space-y-4">
+            <div class="flex justify-between items-start border-b-4 border-black pb-3">
+                <h3 class="text-xl font-black uppercase" id="modal-title">Dados Extraídos</h3>
+                <button id="close-modal-btn" class="neo-button bg-red-500 text-white px-3 py-1 text-sm font-bold">X</button>
+            </div>
+            
+            <p class="text-sm"><strong>PDF:</strong> <span id="modal-pdf-name" class="font-normal text-slate-700"></span></p>
+            <div id="modal-data-content" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                <!-- Pares Chave: Valor serão inseridos aqui -->
+            </div>
+            
+            <!-- Detalhes de Performance Bruta -->
+            <div class="pt-4 border-t-2 border-slate-300">
+                <p class="text-xs text-slate-500">Tempo Síncrono: <span id="modal-time-s"></span>s</p>
+                <p class="text-xs text-slate-500">Chamadas LLM: <span id="modal-llm-calls"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT -->
     <script>
         // --- Estado Global da Aplicação ---
-        let GLOBAL_API_KEY = localStorage.getItem('PAPELADA_API_KEY') || '';
+        
+        // --- MUDANÇA: Lógica da API simplificada ---
+        // Começa vazio. O usuário DEVE preencher se o localStorage estiver vazio.
+        let GLOBAL_PAPELADA_API_KEY = localStorage.getItem('PAPELADA_API_KEY') || '';
+        let GLOBAL_OPENAI_API_KEY = localStorage.getItem('OPENAI_API_KEY') || '';
+        
         let websocket = null;
         let lastExtractionResults = [];
         let lastEvaluationReport = null;
         let totalFilesToProcess = 0;
+        let activeTooltip = null; // Para controlar o tooltip ativo
 
         // --- Seletores do DOM ---
         const screens = {
@@ -220,20 +520,32 @@
         const messageArea = document.getElementById('message-area');
         
         // Tela de Config
-        const apiKeyInput = document.getElementById('api-key');
+        const papeladaApiKeyInput = document.getElementById('papelada-api-key');
+        const openaiApiKeyInput = document.getElementById('openai-api-key');
         const configSaveBtn = document.getElementById('config-save-btn');
-        const logoutBtn = document.getElementById('logout-btn');
+        const quickStartBtn = document.getElementById('quick-start-btn');
+        const showFullFormBtn = document.getElementById('show-full-form-btn');
+        const cancelFullFormBtn = document.getElementById('cancel-full-form-btn');
+        const configQuickStart = document.getElementById('config-quick-start');
+        const configFullForm = document.getElementById('config-full-form');
+        const statusPapeladaKey = document.getElementById('status-papelada-key');
+        const statusOpenAIKey = document.getElementById('status-openai-key');
+        const logoutBtn = document.getElementById('logout-btn-top');
 
         // Tela Principal
+        const helpBtn = document.getElementById('help-btn');
+        const memoryDropdownContainer = document.getElementById('memory-dropdown-container');
+        const memoryDropdownBtn = document.getElementById('memory-dropdown-btn');
+        const memoryDropdownContent = document.getElementById('memory-dropdown-content');
         const schemaFileInput = document.getElementById('schema-file');
         const pdfFilesInput = document.getElementById('pdf-files');
         const referenceFileInput = document.getElementById('reference-file');
         const extractBtn = document.getElementById('extract-btn');
-        const fileListDiv = document.getElementById('file-list');
         const schemaFileName = document.getElementById('schema-file-name');
         const pdfFileNames = document.getElementById('pdf-file-names');
+        const referenceFileName = document.getElementById('reference-file-name');
         
-        // Botões de Memória
+        // Botões de Memória (Movidos para o Dropdown)
         const clearMemoryBtn = document.getElementById('clear-memory-btn');
         const downloadMemoryBtn = document.getElementById('download-memory-btn');
         const loadMemoryInput = document.getElementById('load-memory-input');
@@ -256,8 +568,19 @@
         const backToMainBtn = document.getElementById('back-to-main-btn');
         const filterInput = document.getElementById('filter-input');
         const resultsCardsContainer = document.getElementById('results-cards-container');
-        const jsonViewerContainer = document.getElementById('json-viewer-container');
-        const jsonViewerOutput = document.getElementById('json-viewer-output');
+
+        // Modal Elements
+        const dataModalBackdrop = document.getElementById('data-modal-backdrop');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const modalPdfName = document.getElementById('modal-pdf-name');
+        const modalDataContent = document.getElementById('modal-data-content');
+        const modalTimeS = document.getElementById('modal-time-s');
+        const modalLlmCalls = document.getElementById('modal-llm-calls');
+        
+        // Help Modal Elements
+        const helpModalBackdrop = document.getElementById('help-modal-backdrop');
+        const closeHelpModalBtn = document.getElementById('close-help-modal-btn');
+
 
         const API_URL = "127.0.0.1:8000"; // WebSocket usa URL sem http
 
@@ -269,15 +592,22 @@
                 screens[screenId].classList.remove('hidden');
             }
             messageArea.classList.add('hidden'); // Limpa mensagens ao navegar
+            
+            // Fecha todos os modais e dropdowns ao mudar de tela
+            dataModalBackdrop.style.display = 'none';
+            helpModalBackdrop.style.display = 'none';
+            if (memoryDropdownContent) memoryDropdownContent.classList.add('hidden');
+            hideModeTooltip();
         }
 
         function showMessage(message, type = "error") {
             messageArea.textContent = message;
             if (type === "error") {
-                messageArea.className = "text-sm rounded-md p-3 mb-4 bg-red-100 text-red-800";
+                messageArea.className = "text-sm p-4 border-4 border-black rounded-lg mb-4 font-bold bg-red-500 text-white";
             } else {
-                messageArea.className = "text-sm rounded-md p-3 mb-4 bg-green-100 text-green-800";
+                messageArea.className = "text-sm p-4 border-4 border-black rounded-lg mb-4 font-bold bg-blue-300 text-black";
             }
+            messageArea.classList.remove('hidden');
         }
 
         function logToProgress(message, isError = false) {
@@ -291,52 +621,240 @@
             progressLogContainer.appendChild(entry);
             progressLogContainer.scrollTop = progressLogContainer.scrollHeight;
         }
-
-        // --- Lógica de Inicialização ---
-        document.addEventListener('DOMContentLoaded', () => {
-            if (GLOBAL_API_KEY) {
-                apiKeyInput.value = GLOBAL_API_KEY;
-                navigateTo('main');
-            } else {
-                navigateTo('config');
+        
+        // --- Lógica de Segurança (Limpeza de API Keys) ---
+        
+        // Função centralizada para limpar todas as chaves e o estado global
+        function cleanupSession() {
+            GLOBAL_PAPELADA_API_KEY = '';
+            GLOBAL_OPENAI_API_KEY = '';
+            localStorage.removeItem('PAPELADA_API_KEY');
+            localStorage.removeItem('OPENAI_API_KEY');
+            
+            if (websocket) {
+                websocket.close(1000, "Sessão encerrada");
+                websocket = null;
             }
-        });
+        }
+        
+        // --- EVENT LISTENER: Alerta ao fechar a janela ---
+        window.onbeforeunload = function(e) {
+            // Só alerta se houver uma sessão ativa (se as chaves existirem no localStorage)
+            if (localStorage.getItem('PAPELADA_API_KEY')) {
+                const message = "A sessão será encerrada e as chaves de API removidas ao fechar a janela. Tem certeza?";
+                e.returnValue = message; // Padrão para navegadores mais antigos
+                return message; // Padrão para navegadores modernos
+            }
+        };
+        
+        // --- EVENT LISTENER: Limpar ao fechar a janela (Garantia) ---
+        window.onunload = cleanupSession;
 
         // --- Lógica da Tela de Configuração ---
         
+        function renderConfigScreen() {
+            // MUDANÇA: Lógica de API simplificada
+            if (GLOBAL_PAPELADA_API_KEY) {
+                // Se a chave Papelada MANDATÓRIA existir, mostra a tela de início rápido.
+                statusPapeladaKey.textContent = 'Configurada';
+                statusOpenAIKey.textContent = GLOBAL_OPENAI_API_KEY ? 'Configurada' : 'Ausente (usará .env do servidor)';
+                statusOpenAIKey.className = GLOBAL_OPENAI_API_KEY ? 'font-bold text-green-600' : 'font-bold text-slate-500';
+
+                configQuickStart.classList.remove('hidden');
+                configFullForm.classList.add('hidden');
+                cancelFullFormBtn.classList.add('hidden'); 
+            } else {
+                // Se a chave estiver faltando, mostra o formulário completo
+                papeladaApiKeyInput.value = '';
+                openaiApiKeyInput.value = '';
+                configQuickStart.classList.add('hidden');
+                configFullForm.classList.remove('hidden');
+                cancelFullFormBtn.classList.add('hidden'); 
+            }
+            navigateTo('config');
+        }
+
+        // --- Lógica de Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderConfigScreen();
+        });
+
+        // --- Handlers de navegação da Configuração ---
+
+        quickStartBtn.addEventListener('click', () => {
+            // Garante que as chaves globais estão corretas antes de avançar
+            GLOBAL_PAPELADA_API_KEY = localStorage.getItem('PAPELADA_API_KEY') || '';
+            GLOBAL_OPENAI_API_KEY = localStorage.getItem('OPENAI_API_KEY') || '';
+            navigateTo('main'); // Inicia a sessão com as chaves salvas
+        });
+        
+        showFullFormBtn.addEventListener('click', () => {
+            // Preenche o formulário completo com os valores atuais para edição
+            papeladaApiKeyInput.value = GLOBAL_PAPELADA_API_KEY;
+            openaiApiKeyInput.value = GLOBAL_OPENAI_API_KEY;
+            
+            configQuickStart.classList.add('hidden');
+            configFullForm.classList.remove('hidden');
+            cancelFullFormBtn.classList.remove('hidden'); // Permite cancelar se já houver chaves
+        });
+        
+        cancelFullFormBtn.addEventListener('click', () => {
+            // Volta para a tela de início rápido com as chaves salvas
+            renderConfigScreen();
+        });
+
         configSaveBtn.addEventListener('click', () => {
-            const key = apiKeyInput.value.trim();
-            if (!key) {
-                showMessage("Por favor, insira uma Chave de API.", "error");
+            const papeladaKey = papeladaApiKeyInput.value.trim();
+            const openaiKey = openaiApiKeyInput.value.trim();
+
+            if (!papeladaKey) {
+                showMessage("A Papelada API Key é obrigatória para salvar.", "error");
                 return;
             }
-            GLOBAL_API_KEY = key;
-            localStorage.setItem('PAPELADA_API_KEY', key);
+            
+            GLOBAL_PAPELADA_API_KEY = papeladaKey;
+            GLOBAL_OPENAI_API_KEY = openaiKey;
+            localStorage.setItem('PAPELADA_API_KEY', papeladaKey);
+            localStorage.setItem('OPENAI_API_KEY', openaiKey);
+            
+            showMessage("Chaves de API salvas com sucesso!", "success");
             navigateTo('main');
         });
 
-        logoutBtn.addEventListener('click', () => {
-            if (confirm("Tem certeza que deseja encerrar a sessão? Sua chave de API será removida.")) {
-                GLOBAL_API_KEY = '';
-                localStorage.removeItem('PAPELADA_API_KEY');
-                apiKeyInput.value = '';
-                navigateTo('config');
+        // --- MUDANÇA: Lógica de Logout Atualizada ---
+        const handleLogout = async () => {
+            if (confirm("Tem certeza que deseja encerrar a sessão? Suas chaves de API locais e a memória do SERVIDOR serão removidas.")) {
+                
+                const keyToUseForDeletion = GLOBAL_PAPELADA_API_KEY; // Salva a chave atual
+                
+                // 1. Limpa a sessão local (chaves)
+                cleanupSession(); // Limpa as chaves globais e localStorage
+                
+                // 2. Tenta limpar a memória do servidor com a chave que acabamos de salvar
+                if (keyToUseForDeletion) { 
+                     try {
+                         const response = await fetch(`http://${API_URL}/memory/`, {
+                             method: 'DELETE',
+                             headers: { 'X-API-Key': keyToUseForDeletion }
+                         });
+                         if(response.ok) {
+                             console.log("Memória do servidor limpa.");
+                         } else {
+                             console.error("Falha ao limpar a memória do servidor, mas a sessão local foi encerrada.");
+                         }
+                     } catch (err) {
+                         console.error("Erro de rede ao limpar a memória do servidor:", err);
+                     }
+                }
+
+                // 3. Volta para a tela de config
+                renderConfigScreen();
+            }
+        };
+
+        // Associa o handler ao botão de logout
+        logoutBtn.addEventListener('click', handleLogout); 
+        
+        // --- Handlers do Dropdown Memória ---
+        if (memoryDropdownBtn) {
+            memoryDropdownBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Impede que o clique feche imediatamente
+                memoryDropdownContent.classList.toggle('hidden');
+            });
+
+            // Fecha o dropdown se clicar fora dele
+            document.addEventListener('click', (e) => {
+                if (memoryDropdownContainer && !memoryDropdownContainer.contains(e.target)) {
+                    memoryDropdownContent.classList.add('hidden');
+                }
+            });
+        }
+
+
+        // --- Lógica do Tooltip de Modo ---
+        
+        function showModeTooltip(mode, element) {
+            hideModeTooltip(); // Esconde o anterior
+            
+            const tooltip = document.getElementById(`tooltip-${mode}`);
+            if (tooltip) {
+                // Posiciona o tooltip
+                const rect = element.getBoundingClientRect();
+                const containerRect = screens.main.getBoundingClientRect();
+
+                // Garante que o tooltip aparece sobre o botão "?"
+                tooltip.style.top = `${rect.bottom - containerRect.top + 5}px`;
+                tooltip.style.left = `${rect.left - containerRect.left + (rect.width / 2)}px`;
+
+                // Centraliza horizontalmente e torna visível
+                tooltip.style.transform = 'translateX(-50%)';
+                tooltip.classList.add('visible');
+                activeTooltip = tooltip;
+            }
+        }
+        
+        function hideModeTooltip() {
+            if (activeTooltip) {
+                activeTooltip.classList.remove('visible');
+                activeTooltip = null;
+            }
+        }
+
+        // Adiciona listeners aos botões (?) e ao mouseleave
+        document.querySelectorAll('.mode-help-btn').forEach(btn => {
+            const mode = btn.getAttribute('data-mode');
+            
+            // Mouse Enter (Hover)
+            btn.addEventListener('mouseenter', () => {
+                showModeTooltip(mode, btn);
+            });
+            
+            // Mouse Leave
+            btn.addEventListener('mouseleave', () => {
+                // Delay para dar tempo de mover para o tooltip
+                setTimeout(hideModeTooltip, 100); 
+            });
+
+            // Click (para fixar/alternar se o usuário estiver em um dispositivo touch ou quiser clicar)
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (activeTooltip && activeTooltip.id === `tooltip-${mode}`) {
+                    hideModeTooltip();
+                } else {
+                    showModeTooltip(mode, btn);
+                }
+            });
+        });
+        
+        // Adiciona listeners para fechar o tooltip ao clicar em qualquer lugar
+        document.addEventListener('click', (e) => {
+            if (activeTooltip && !e.target.classList.contains('mode-help-btn') && !e.target.closest('.mode-tooltip')) {
+                hideModeTooltip();
             }
         });
 
         // --- Lógica da Tela Principal (Upload) ---
 
-        // Feedback de ficheiros (inalterado)
+        // Feedback de ficheiros
         schemaFileInput.addEventListener('change', () => {
             if (schemaFileInput.files.length > 0) {
-                schemaFileName.textContent = `Schema: ${schemaFileInput.files[0].name}`;
-                fileListDiv.classList.remove('hidden');
+                schemaFileName.textContent = schemaFileInput.files[0].name;
+            } else {
+                schemaFileName.textContent = '';
             }
         });
         pdfFilesInput.addEventListener('change', () => {
             if (pdfFilesInput.files.length > 0) {
                 pdfFileNames.textContent = `${pdfFilesInput.files.length} PDF(s) selecionados.`;
-                fileListDiv.classList.remove('hidden');
+            } else {
+                pdfFileNames.textContent = '';
+            }
+        });
+        referenceFileInput.addEventListener('change', () => {
+            if (referenceFileInput.files.length > 0) {
+                referenceFileName.textContent = referenceFileInput.files[0].name;
+            } else {
+                referenceFileName.textContent = '';
             }
         });
         
@@ -348,19 +866,19 @@
             const referenceFile = referenceFileInput.files[0];
             const selectedMode = document.querySelector('input[name="execution-mode"]:checked').value;
 
-            // 1. Validação
-            if (!GLOBAL_API_KEY || !schemaFile || pdfFiles.length === 0) {
-                showMessage("Por favor, preencha a chave da API, selecione um schema e pelo menos um PDF.", "error");
+            // 1. Validação (Usa GLOBAL_PAPELADA_API_KEY que deve estar preenchida)
+            if (!GLOBAL_PAPELADA_API_KEY || !schemaFile || pdfFiles.length === 0) {
+                showMessage("A Papelada API Key deve ser configurada, e você deve selecionar um schema e pelo menos um PDF.", "error");
                 return;
             }
             
             // 2. Resetar estado e ir para tela de progresso
             lastExtractionResults = [];
             lastEvaluationReport = null;
-            totalFilesToProcess = 0; // Será definido pelo número de schemas
+            totalFilesToProcess = 0; 
             
-            // Tenta ler o schema para saber o total de ficheiros
             try {
+                // Para calcular o total de arquivos a processar (totalFilesToProcess)
                 const schemaContent = await schemaFile.text();
                 const schemaJson = JSON.parse(schemaContent);
                 totalFilesToProcess = Array.isArray(schemaJson) ? schemaJson.length : 0;
@@ -371,7 +889,7 @@
             
             progressBar.style.width = '0%';
             progressText.textContent = `Processando 0 / ${totalFilesToProcess} arquivos...`;
-            progressLogContainer.innerHTML = '<p class="text-gray-500">A iniciar conexão WebSocket...</p>';
+            progressLogContainer.innerHTML = '<p class="text-neutral-500">A iniciar conexão WebSocket...</p>';
             navigateTo('progress');
 
             // 3. Iniciar Conexão WebSocket
@@ -396,7 +914,8 @@
 
                     // Enviar a mensagem de configuração
                     const configMessage = {
-                        api_key: GLOBAL_API_KEY,
+                        papelada_api_key: GLOBAL_PAPELADA_API_KEY,
+                        openai_api_key: GLOBAL_OPENAI_API_KEY, 
                         mode: selectedMode,
                         schema_file: { name: schemaFile.name, content: schemaB64.content },
                         pdf_files: pdfsB64.map((pdf, i) => ({ name: pdfFiles[i].name, content: pdf.content })),
@@ -412,7 +931,6 @@
                 }
             };
             
-            // --- MUDANÇA PRINCIPAL NO HANDLER DE MENSAGENS ---
             websocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 
@@ -429,27 +947,29 @@
                         progressBar.style.width = `${percent > 100 ? 100 : percent}%`;
                         progressText.textContent = `Processando ${lastExtractionResults.length} / ${totalFilesToProcess} arquivos...`;
                         
-                        logToProgress(`[OK] <strong>${result.pdf_path}</strong> processado em <strong>${result.sync_data_time_s}s</strong>`);
+                        // Determina a cor do texto do log (Verde para Regra, Amarelo para LLM)
+                        const llmCalls = (result.metrics?.llm_data_calls || 0);
+                        const logColor = llmCalls > 0 ? 'text-yellow-400' : 'text-green-400';
+                        const sourceText = llmCalls > 0 ? 'usando LLM' : 'usando Regra (Cache)';
+
+                        logToProgress(`[OK] <span class="text-white">${result.pdf_path}</span> processado em <span class="${logColor}">${result.sync_data_time_s}s</span> <span class="text-slate-500">(${sourceText})</span>`);
                         break;
                     
                     case 'extraction_complete':
-                        // A EXTRAÇÃO TERMINOU! MUDAR DE TELA
                         logToProgress("Extração concluída! A carregar tela de resultados...");
-                        lastExtractionResults = data.results; // Atualiza com a lista completa e final
-                        processResults(); // Processa os dados iniciais
+                        lastExtractionResults = data.results; 
+                        processResults(); 
                         navigateTo('results');
                         break;
                         
                     case 'evaluation_complete':
-                        // A AVALIAÇÃO TERMINOU! ATUALIZAR A TELA DE RESULTADOS
                         logToProgress("Relatório de avaliação recebido.");
                         lastEvaluationReport = data.evaluation_report;
-                        updateEvaluationUI(lastEvaluationReport); // Atualiza a UI
+                        updateEvaluationUI(lastEvaluationReport); 
                         break;
                         
                     case 'learning_complete':
                         logToProgress("Aprendizado em segundo plano concluído. Memória salva.");
-                        // Mostra uma notificação na tela de resultados
                         showMessage("Aprendizado em segundo plano concluído. Memória atualizada.", "success");
                         break;
                         
@@ -461,7 +981,7 @@
                     case 'error':
                         logToProgress(data.message, true);
                         showMessage(data.message, "error");
-                        navigateTo('main'); // Volta para a tela principal em caso de erro
+                        navigateTo('main'); 
                         if (websocket) websocket.close();
                         break;
                 }
@@ -500,27 +1020,24 @@
 
         // --- Lógica da Tela de Resultados ---
         
-        // Esta função agora SÓ processa os dados de extração
         function processResults() {
-            // Limpa containers
             resultsCardsContainer.innerHTML = '';
-            jsonViewerContainer.classList.add('hidden');
             filterInput.value = '';
 
-            // Reseta a UI de avaliação (será preenchida depois)
             reportContainer.classList.add('hidden');
             downloadReportBtn.classList.add('hidden');
+            modalDataContent.textContent = ''; // Limpa conteúdo do modal
+            dataModalBackdrop.style.display = 'none'; // Garante que o modal está fechado
+
             metricAccuracy.textContent = 'Aguardando...';
             metricCorrectFields.textContent = '...';
 
-            // 1. Renderizar Métricas de Extração
             let totalSyncTime = 0;
             let totalCalls = 0;
             let totalTokens = 0;
 
             lastExtractionResults.forEach(res => {
                 totalSyncTime += res.sync_data_time_s || 0;
-                // As métricas de LLM estão agora dentro de 'metrics'
                 totalCalls += (res.metrics?.llm_data_calls || 0) + (res.metrics?.llm_regex_calls || 0);
                 totalTokens += (res.metrics?.llm_data_tokens || 0) + (res.metrics?.llm_regex_tokens || 0);
             });
@@ -529,16 +1046,14 @@
             metricLlmCalls.textContent = totalCalls;
             metricLlmTokens.textContent = totalTokens;
             
-            // 2. Renderizar Cards
             renderResultCards(lastExtractionResults);
         }
         
-        // NOVA Função para atualizar a UI de avaliação dinamicamente
         function updateEvaluationUI(report) {
             if (!report || report.error) {
                 metricAccuracy.textContent = 'Falhou';
                 metricCorrectFields.textContent = 'Erro ao gerar';
-                reportContainer.classList.remove('hidden'); // Mostra para indicar o erro
+                reportContainer.classList.remove('hidden'); 
                 downloadReportBtn.classList.add('hidden');
                 return;
             }
@@ -548,12 +1063,40 @@
             reportContainer.classList.remove('hidden');
             downloadReportBtn.classList.remove('hidden');
         }
+        
+        // --- Função para Abrir Modal ---
+        function showExtractionModal(index) {
+            const result = lastExtractionResults[index];
+            const data = result.extracted_data || {};
+            const metrics = result.metrics || {};
+            
+            modalPdfName.textContent = result.pdf_path;
+            modalTimeS.textContent = result.sync_data_time_s?.toFixed(3) || 'N/A';
+            modalLlmCalls.textContent = (metrics.llm_data_calls + metrics.llm_regex_calls) || 0;
+            
+            modalDataContent.innerHTML = ''; // Limpa conteúdo
+            
+            for (const [key, value] of Object.entries(data)) {
+                const isNull = value === 'null' || value === null || value === undefined;
+                
+                const dataEntry = document.createElement('div');
+                dataEntry.className = 'neo-card p-3 bg-white';
+                dataEntry.innerHTML = `
+                    <p class="text-xs text-slate-500 font-bold uppercase truncate">${key}:</p>
+                    <p class="text-base font-black ${isNull ? 'text-red-500' : 'text-gray-800'} break-words">${isNull ? 'NÃO ENCONTRADO' : value}</p>
+                `;
+                modalDataContent.appendChild(dataEntry);
+            }
 
+            dataModalBackdrop.style.display = 'flex';
+        }
+
+        // --- Correção: Renderização dos Cards e Event Listener ---
         function renderResultCards(results) {
-            resultsCardsContainer.innerHTML = ''; // Limpa
+            resultsCardsContainer.innerHTML = ''; 
             
             if (results.length === 0) {
-                 resultsCardsContainer.innerHTML = '<p class="text-gray-500">Nenhum dado extraído.</p>';
+                 resultsCardsContainer.innerHTML = '<p class="text-center font-bold">Nenhum dado extraído.</p>';
                  return;
             }
 
@@ -563,40 +1106,62 @@
                 const pdfName = result.pdf_path;
                 
                 if (filterText && !pdfName.toLowerCase().includes(filterText)) {
-                    return; // Pula este card se não corresponder ao filtro
+                    return; 
                 }
 
                 const card = document.createElement('div');
-                card.className = 'card flex justify-between items-center';
+                card.className = 'neo-card flex justify-between items-center p-4 cursor-pointer hover:bg-slate-50 transition-colors';
                 card.innerHTML = `
                     <div>
-                        <strong class="text-blue-700">${pdfName}</strong>
-                        <p class="text-sm text-gray-500">Label: ${result.label} | Tempo Síncrono: ${result.sync_data_time_s}s</p>
+                        <strong class="text-blue-700 text-lg">${pdfName}</strong>
+                        <p class="text-sm text-gray-600 font-bold">Label: ${result.label} | Tempo: ${result.sync_data_time_s}s</p>
                     </div>
-                    <button class="view-json-btn px-3 py-1 text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-800" data-index="${index}">
-                        Ver JSON
+                    <button class="neo-button bg-gray-800 text-white text-sm py-2 px-4" data-index="${index}">
+                        Ver Dados
                     </button>
                 `;
-                resultsCardsContainer.appendChild(card);
-            });
-
-            // Adiciona listeners aos novos botões "Ver JSON"
-            document.querySelectorAll('.view-json-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index, 10);
-                    const selectedData = lastExtractionResults[index];
-                    jsonViewerOutput.textContent = JSON.stringify(selectedData, null, 2);
-                    jsonViewerContainer.classList.remove('hidden');
+                
+                const viewButton = card.querySelector('button');
+                viewButton.addEventListener('click', () => {
+                    showExtractionModal(index);
                 });
+                
+                resultsCardsContainer.appendChild(card);
             });
         }
         
-        // Filtro
         filterInput.addEventListener('input', () => {
             renderResultCards(lastExtractionResults);
         });
         
-        // Botões de Download
+        // --- Handlers dos Modais ---
+        closeModalBtn.addEventListener('click', () => {
+            dataModalBackdrop.style.display = 'none';
+        });
+        // Fecha o modal de dados se clicar fora dele
+        dataModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === dataModalBackdrop) {
+                dataModalBackdrop.style.display = 'none';
+            }
+        });
+        
+        helpBtn.addEventListener('click', () => {
+            helpModalBackdrop.style.display = 'flex';
+        });
+        
+        closeHelpModalBtn.addEventListener('click', () => {
+            helpModalBackdrop.style.display = 'none';
+        });
+        // Fecha o modal de ajuda se clicar fora dele
+        helpModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === helpModalBackdrop) {
+                helpModalBackdrop.style.display = 'none';
+            }
+        });
+
+
+        // --- Funções de Download e Navegação (Inalteradas) ---
+
         function downloadJSON(data, filename) {
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -617,27 +1182,26 @@
             downloadJSON(lastEvaluationReport, 'evaluation_report.json');
         });
 
-        // Voltar
         backToMainBtn.addEventListener('click', () => {
-            // Limpa os campos de ficheiros ao voltar
             schemaFileInput.value = null;
             pdfFilesInput.value = null;
             referenceFileInput.value = null;
-            fileListDiv.classList.add('hidden');
             schemaFileName.textContent = '';
             pdfFileNames.textContent = '';
+            referenceFileName.textContent = '';
             
             navigateTo('main');
         });
 
 
-        // --- Lógica de Gerenciamento de Memória (HTTP - Inalterada) ---
+        // --- Lógica de Gerenciamento de Memória (HTTP) ---
 
         async function makeApiCall(url, method, body = null, isJson = false) {
             try {
+                // Usa a Papelada Key salva no estado global para o header
                 const options = {
                     method: method,
-                    headers: { 'X-API-Key': GLOBAL_API_KEY },
+                    headers: { 'X-API-Key': GLOBAL_PAPELADA_API_KEY },
                 };
                 if (body) {
                     options.body = body;
@@ -682,6 +1246,7 @@
                     showMessage("Memória limpa com sucesso!", "success");
                 }
             }
+            memoryDropdownContent.classList.add('hidden');
         });
         
         downloadMemoryBtn.addEventListener('click', async () => {
@@ -689,6 +1254,7 @@
              if(result) {
                  showMessage(result.message, "success");
              }
+             memoryDropdownContent.classList.add('hidden');
         });
         
         loadMemoryInput.addEventListener('change', async (e) => {
@@ -705,6 +1271,7 @@
                 }
             }
             e.target.value = null; 
+            memoryDropdownContent.classList.add('hidden');
         });
 
     </script>

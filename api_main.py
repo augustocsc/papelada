@@ -6,7 +6,7 @@ import shutil
 import time 
 import base64
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional 
 from dotenv import load_dotenv
 
 from fastapi import (
@@ -33,7 +33,7 @@ load_dotenv()
 app = FastAPI(
     title="Papelada API",
     description="API para extração de dados de PDFs usando uma arquitetura de aprendizagem híbrida.",
-    version="2.1.0 (Fluxo Async)"
+    version="2.1.5 (Memory Fix)"
 )
 
 # --- Configuração de CORS ---
@@ -73,7 +73,10 @@ async def startup_event():
         memory_path = Path(app_state["memory_path_str"])
         app_state["memory"] = load_memory(memory_path)
         
-        app_state["client"] = AsyncOpenAI() 
+        # O cliente OpenAI será criado DENTRO do websocket_extract_live para usar a chave passada
+        # Adiciona a fábrica de clientes ao estado
+        app_state["client_factory"] = lambda key: AsyncOpenAI(api_key=key)
+        
         app_state["lock"] = asyncio.Lock()
         
         Path("results").mkdir(exist_ok=True)
@@ -98,6 +101,7 @@ async def shutdown_event():
 @app.websocket("/ws/extract_live/")
 async def websocket_extract_live(websocket: WebSocket):
     await websocket.accept()
+    print("\nDEBUG: WebSocket Conectado. Aguardando mensagem de configuração...")
     
     config_data = None
     temp_dir = None
@@ -106,15 +110,58 @@ async def websocket_extract_live(websocket: WebSocket):
     try:
         # 1. Esperar pela mensagem de configuração e ficheiros (Base64)
         config_data = await websocket.receive_json()
+        print("DEBUG: Mensagem de configuração recebida.")
         
         # 2. Validar API Key
-        api_key = config_data.get("api_key")
-        if not api_key or api_key != API_KEY:
-            await websocket.send_json({"type": "error", "message": "Chave de API inválida ou ausente."})
+        papelada_api_key = config_data.get("papelada_api_key")
+        if not papelada_api_key or papelada_api_key != API_KEY:
+            print(f"DEBUG: Falha na autenticação da Papelada API Key. Chave recebida: {papelada_api_key}")
+            await websocket.send_json({"type": "error", "message": "Chave de API Papelada inválida ou ausente."})
             await websocket.close(code=1008)
             return
 
-        await websocket.send_json({"type": "status", "message": "Chave de API válida. A preparar ficheiros..."})
+        # --- Lógica de verificação da chave OpenAI ---
+        # 1. Pega a chave do frontend (pode ser "" ou None)
+        openai_api_key = config_data.get("openai_api_key")
+        # 2. Se não houver chave do frontend (é "" ou None), TENTA pegar do .env
+        if not openai_api_key:
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+
+        current_mode = config_data.get("mode", "smart")
+        llm_client = None
+        
+        print(f"DEBUG: Chave Papelada OK. Chave OpenAI (após fallback): {'*' * len(openai_api_key) if openai_api_key else 'None'}. Modo: {current_mode}")
+
+        # 3. AGORA, verifica se (após todas as tentativas) a chave ainda está ausente
+        if openai_api_key:
+            # Se uma chave FOI encontrada (no app ou .env), tente usá-la.
+            try:
+                llm_client = app_state["client_factory"](openai_api_key)
+                await websocket.send_json({"type": "status", "message": "Cliente LLM (OpenAI) inicializado com sucesso."})
+                print("DEBUG: Cliente LLM (OpenAI) inicializado com sucesso.")
+            except Exception as e:
+                # Se a chave for inválida (ex: "sk-123"), isso é um erro fatal.
+                print(f"DEBUG: Falha ao inicializar cliente OpenAI. Chave inválida? Erro: {e}")
+                await websocket.send_json({"type": "error", "message": f"Falha ao inicializar cliente OpenAI (Chave inválida?): {e}"})
+                await websocket.close(code=1008)
+                return
+        else:
+            # Se NENHUMA chave foi encontrada
+            if current_mode != "standard":
+                # Apenas envie um AVISO. O Orquestrador vai falhar se precisar do LLM.
+                print("DEBUG: Nenhuma chave OpenAI encontrada, mas o modo 'smart'/'pro' foi selecionado. Enviando aviso.")
+                await websocket.send_json({"type": "status", "message": "Aviso: Chave OpenAI não fornecida. A extração por LLM falhará. Apenas regras de memória funcionarão."})
+            else:
+                # Modo Standard, tudo bem.
+                print("DEBUG: Nenhuma chave OpenAI encontrada. Modo 'standard' selecionado. OK.")
+                await websocket.send_json({"type": "status", "message": "Chave OpenAI não fornecida. A executar em modo 'Standard' (apenas memória)."})
+        
+        # O código agora continua, mesmo que llm_client seja None.
+        # --- FIM DA MUDANÇA ---
+
+
+        await websocket.send_json({"type": "status", "message": "Chaves válidas. A preparar ficheiros..."})
+        print("DEBUG: Lendo e decodificando arquivos...")
 
         # 3. Preparar ficheiros a partir de Base64
         temp_dir = tempfile.mkdtemp(prefix="papelada_ws_")
@@ -140,13 +187,15 @@ async def websocket_extract_live(websocket: WebSocket):
 
         # Ficheiro de Referência (Opcional)
         ref_json = None
-        ref_file = config_data.get("reference_file", {})
-        if ref_file.get("content"):
+        ref_file = config_data.get("reference_file") # Pode ser None
+        if ref_file and ref_file.get("content"): # Verifica se ref_file não é None
             ref_content_b64 = ref_file.get("content", "").split(',')[-1]
             ref_content = base64.b64decode(ref_content_b64).decode('utf-8')
             ref_json = json.loads(ref_content)
-
+            print("DEBUG: Arquivo de referência (teste) carregado.")
+        
         await websocket.send_json({"type": "status", "message": f"{len(pdf_files)} PDFs prontos. A iniciar o orquestrador..."})
+        print("DEBUG: Arquivos prontos. Hidratando schemas...")
 
         # 4. "Hidratar" Schemas (igual a antes)
         valid_schemas_to_run = []
@@ -162,11 +211,15 @@ async def websocket_extract_live(websocket: WebSocket):
                 print(f"Aviso: O schema para {pdf_name} foi ignorado (PDF não enviado no lote).")
         
         if not valid_schemas_to_run:
-            raise HTTPException(status_code=400, detail="Nenhum PDF enviado corresponde aos schemas.")
+            print("DEBUG: Erro - Nenhum PDF corresponde aos schemas.")
+            await websocket.send_json({"type": "error", "message": "Nenhum PDF enviado corresponde aos schemas."})
+            await websocket.close(code=1008)
+            return
 
-        # 5. Preparar para o Orquestrador (igual a antes)
+        print("DEBUG: Schemas prontos. Carregando PDFs...")
+        # 5. Preparar para o Orquestrador
         current_cfg = app_state["cfg"].copy()
-        current_cfg["mode"] = config_data.get("mode", "smart") # Usar o modo vindo da UI
+        current_cfg["mode"] = config_data.get("mode", "smart")
         
         raw_processed_pdfs = load_pdfs(pdf_paths_to_load, current_cfg)
         processed_pdfs_for_orchestrator = {}
@@ -174,58 +227,69 @@ async def websocket_extract_live(websocket: WebSocket):
             full_path_key = str(temp_dir_path / filename_key)
             processed_pdfs_for_orchestrator[full_path_key] = data
 
+        print("DEBUG: PDFs carregados. Iniciando Orquestrador...")
         # 6. Definir o Callback de Progresso
         
-        # Função de callback segura para enviar dados pelo WebSocket
         async def progress_callback(data: dict):
-            try:
-                # Limpa os dados para envio (remove caminhos locais)
-                if data["type"] == "progress":
-                    result = data["result"]
-                    if "pdf_path_original" in result:
-                        result["pdf_path"] = result.pop("pdf_path_original")
-                    if "pdf_path" in result and temp_dir in result["pdf_path"]:
-                        result["pdf_path"] = Path(result["pdf_path"]).name
-                    
-                    await websocket.send_json({
-                        "type": "progress",
-                        "result": result
-                    })
-                else:
-                    await websocket.send_json(data)
-            except Exception as e:
-                print(f"Erro ao enviar callback de progresso: {e}")
+            """Função injetada no orquestrador para enviar atualizações."""
+            if data["type"] == "progress":
+                print(f"DEBUG: Orquestrador enviou progresso para {data['result'].get('pdf_path_original')}")
+                # Adiciona o resultado à nossa lista
+                result = data["result"]
+                
+                # Limpa o resultado para envio (remove dados locais)
+                if "pdf_path_original" in result:
+                    # Usa o nome original do PDF para a UI
+                    result["pdf_path"] = result.pop("pdf_path_original") 
+                
+                all_extraction_results.append(result)
+                
+                # Envia a atualização de progresso para a UI (EXTRAÇÃO INDIVIDUAL)
+                await websocket.send_json({
+                    "type": "progress",
+                    "result": result
+                })
+            elif data["type"] == "error":
+                print(f"DEBUG: Orquestrador enviou erro: {data['message']}")
+                await websocket.send_json(data)
         
-        # 7. Executar o Orquestrador
+        # 7. Executar o Orquestrador (Não espera pelas tarefas de aprendizado)
+        # --- MUDANÇA CRÍTICA: Remover .copy() ---
+        # Devemos passar a REFERÊNCIA para a memória, não uma cópia.
         async with app_state["lock"]:
-            memory_snapshot = app_state["memory"].copy() # Usa uma cópia para o 'run'
+            memory_to_use = app_state["memory"] # Passa a referência direta
 
-        # MUDANÇA: 'run' agora retorna os resultados E as tasks de fundo
-        all_extraction_results, background_tasks = await run_orchestrator(
+        initial_results, background_tasks = await run_orchestrator(
             cfg=current_cfg,
             extr_schema=valid_schemas_to_run,
             processed_pdfs=processed_pdfs_for_orchestrator, 
-            memory=memory_snapshot, # O orquestrador atualiza esta cópia
-            client=app_state["client"],
-            memory_lock=app_state["lock"], # O lock é usado para ATUALIZAR a memória principal
+            memory=memory_to_use, # Passa a referência, não o snapshot
+            client=llm_client, # Pode ser None
+            memory_lock=app_state["lock"],
             progress_callback=progress_callback
         )
+        # --- FIM DA MUDANÇA ---
         
-        # MUDANÇA: Envia a 'extração concluída' IMEDIATAMENTE
+        print("DEBUG: Orquestrador CONCLUÍDO (Extração Síncrona). Enviando 'extraction_complete'...")
+        # 8. Enviar Mensagem de Extração COMPLETA (SINAL PARA MUDAR DE TELA)
         await websocket.send_json({
             "type": "extraction_complete",
-            "results": all_extraction_results # Envia todos os resultados de uma vez
+            "results": initial_results,
         })
-
-        # 8. Avaliação Opcional (executa agora, em segundo plano da UI)
+        
+        # --- PROCESSOS DE FUNDO INICIAM AQUI ---
+        
+        # 9. Avaliação Opcional (Execução no background, mas aguardada para envio)
         report = None
         report_path_str = None
         
         if ref_json:
-            await websocket.send_json({"type": "status", "message": "Extração concluída. A gerar relatório de avaliação..."})
+            print("DEBUG: Processando avaliação (se houver)...")
+            await websocket.send_json({"type": "status", "message": "A gerar relatório de avaliação..."})
             try:
+                # O evaluate_accuracy usa os resultados finais (initial_results)
                 report = evaluate_accuracy(
-                    predictions=all_extraction_results, 
+                    predictions=initial_results, 
                     ground_truth=ref_json
                 )
                 
@@ -241,46 +305,32 @@ async def websocket_extract_live(websocket: WebSocket):
                 report_path_str = str(report_path)
                 save_json(report, report_path_str)
                 
-                # MUDANÇA: Envia o relatório de avaliação
-                await websocket.send_json({
-                    "type": "evaluation_complete",
-                    "evaluation_report": report,
-                    "report_saved_to": report_path_str
-                })
-                
             except Exception as e:
                 print(f"Erro ao processar o ficheiro de avaliação: {e}")
                 report = {"error": f"Falha ao processar ficheiro de referência: {e}"}
-                await websocket.send_json({"type": "evaluation_complete", "evaluation_report": report})
         
-        # 9. Esperar pelas tasks de aprendizado em segundo plano
-        if background_tasks and current_cfg.get("mode", "standard") != "standard":
-            await websocket.send_json({"type": "status", "message": f"A aguardar {len(background_tasks)} tarefas de aprendizado em segundo plano..."})
+        print("DEBUG: Avaliação CONCLUÍDA. Enviando 'evaluation_complete'...")
+        # Envia o relatório de avaliação para a UI (ATUALIZAÇÃO DINÂMICA)
+        await websocket.send_json({
+            "type": "evaluation_complete",
+            "evaluation_report": report,
+            "report_saved_to": report_path_str
+        })
+        
+        # 10. Esperar e Notificar sobre o Aprendizado de Regras (LENTO)
+        if background_tasks:
+            print(f"DEBUG: Aguardando {len(background_tasks)} tarefas de aprendizado...")
+            await websocket.send_json({"type": "status", "message": f"A aguardar {len(background_tasks)} tarefas de aprendizado de regras..."})
+            await asyncio.gather(*background_tasks, return_exceptions=True)
             
-            await asyncio.gather(*background_tasks)
-            
+            print("DEBUG: Tarefas de aprendizado CONCLUÍDAS. Enviando 'learning_complete'...")
+            # Envia a notificação de aprendizado completo
             await websocket.send_json({"type": "learning_complete"})
             
-            # Salva a memória principal (app_state["memory"]) que foi
-            # modificada pelo 'extractor' usando o 'memory_lock'
-            try:
-                memory_file_path = current_cfg.get("memory_file")
-                if memory_file_path:
-                    print(f"Saving updated memory to {memory_file_path}...")
-                    # Salva a memória principal do app, que foi modificada
-                    async with app_state["lock"]:
-                         save_json(app_state["memory"], memory_file_path)
-                    print("Memory saved.")
-                else:
-                    print("Warning: 'memory_file' not specified in config. Cannot save memory.")
-            except Exception as e:
-                print(f"Error saving memory file: {e}")
+        # 11. Mensagem Final
+        print("DEBUG: Todos os processos concluídos. Enviando 'all_processes_complete'.")
+        await websocket.send_json({"type": "all_processes_complete"})
 
-        # 10. Enviar Mensagem Final de Conclusão
-        await websocket.send_json({
-            "type": "all_processes_complete",
-            "total_files": len(all_extraction_results)
-        })
 
     except WebSocketDisconnect:
         print("Cliente desconectado.")
@@ -291,10 +341,10 @@ async def websocket_extract_live(websocket: WebSocket):
         try:
             await websocket.send_json({"type": "error", "message": f"Erro interno do servidor: {str(e)}"})
         except:
-            pass
+            pass # A conexão pode estar morta.
     
     finally:
-        # 11. Limpeza
+        # 12. Limpeza
         if temp_dir:
             try:
                 shutil.rmtree(temp_dir)
@@ -302,9 +352,16 @@ async def websocket_extract_live(websocket: WebSocket):
             except Exception as e:
                 print(f"Erro ao limpar o diretório temporário {temp_dir}: {e}")
         
-        if not websocket.client_state == 'DISCONNECTED':
-             await websocket.close()
-        print("Conexão WebSocket fechada.")
+        # --- Correção da Race Condition ---
+        if websocket.client_state != 'DISCONNECTED':
+             try:
+                 await websocket.close()
+                 print("Conexão WebSocket fechada pelo servidor.")
+             except RuntimeError as e:
+                 # Captura a race condition e a ignora silenciosamente (ou com log limpo)
+                 print(f"Info: WebSocket já fechado (provavelmente pelo cliente). A race condition foi capturada.")
+        else:
+            print("Info: WebSocket já estava desconectado.")
 
 
 # --- ENDPOINTS DE CONFIGURAÇÃO E MEMÓRIA (Inalterados) ---
@@ -354,6 +411,7 @@ async def clear_memory():
          dependencies=[Depends(get_api_key)])
 async def download_memory():
     async with app_state["lock"]:
+        # ESTA É A LINHA QUE SALVA ANTES DE BAIXAR
         save_json(app_state["memory"], app_state["memory_path_str"])
     
     return FileResponse(
