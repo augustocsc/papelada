@@ -8,101 +8,325 @@
     <style>
         .spinner { border-top-color: transparent; border-right-color: transparent; animation: spin 0.4s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        /* Oculta o input[type=file] original */
+        .file-input-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+        .file-input-label { cursor: pointer; display: inline-block; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.875rem; }
+        .card { background-color: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+        
+        /* Estilos para a barra de progresso */
+        #progress-bar { transition: width 0.3s ease-in-out; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="bg-white w-full max-w-3xl p-6 sm:p-8 rounded-xl shadow-lg">
+    <div class="bg-white w-full max-w-4xl p-6 sm:p-8 rounded-xl shadow-lg">
         
         <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
             <h1 class="text-3xl font-bold text-gray-800">Papelada</h1>
-            <span class="text-sm font-medium text-gray-500">v1.1 (com Avaliação)</span>
+            <span id="app-version" class="text-sm font-medium text-gray-500">v2.1 (WebSocket)</span>
         </div>
 
-        <form id="upload-form" class="space-y-6">
+        <!-- ÁREA DE MENSAGEM GLOBAL -->
+        <div id="message-area" class="text-sm rounded-md p-3 hidden mb-4"></div>
 
+        <!-- 
+          TELA 1: CONFIGURAÇÃO DE SESSÃO 
+        -->
+        <div id="screen-config" class="space-y-6">
+            <h2 class="text-2xl font-semibold text-gray-800">Configurar Sessão</h2>
+            <p class="text-gray-600">Para começar, insira sua chave de API. Ela será usada para todas as requisições.</p>
             <div>
                 <label for="api-key" class="block text-sm font-medium text-gray-700">Chave da API (X-API-Key)</label>
                 <input type="password" id="api-key" placeholder="Cole o seu PAPELADA_API_KEY do .env" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             </div>
+            <button id="config-save-btn" class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                Iniciar Sessão
+            </button>
+        </div>
 
-            <!-- Ficheiros Obrigatórios -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 
+          TELA 2: UPLOAD E MODO DE EXECUÇÃO
+        -->
+        <div id="screen-main" class="hidden space-y-6">
+            <!-- Este <form> NÃO será submetido; é apenas para layout -->
+            <form id="upload-form" class="space-y-6" onsubmit="return false;">
+                <!-- Seleção de Modo -->
                 <div>
-                    <label for="schema-file" class="block text-sm font-medium text-gray-700">1. Ficheiro de Schema (.json)</label>
-                    <input type="file" id="schema-file" accept=".json" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <h3 class="text-lg font-medium text-gray-700">Modo de Execução</h3>
+                    <fieldset class="mt-2">
+                        <legend class="sr-only">Escolha o modo de execução</legend>
+                        <div class="flex space-x-4">
+                            <label for="mode-standard" class="flex items-center">
+                                <input id="mode-standard" value="standard" name="execution-mode" type="radio" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                <span class="ml-3 block text-sm font-medium text-gray-700">Papelzinho (Standard)</span>
+                            </label>
+                            <label for="mode-smart" class="flex items-center">
+                                <input id="mode-smart" value="smart" name="execution-mode" type="radio" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300" checked>
+                                <span class="ml-3 block text-sm font-medium text-gray-700">Papelada (Smart)</span>
+                            </label>
+                            <label for="mode-pro" class="flex items-center">
+                                <input id="mode-pro" value="pro" name="execution-mode" type="radio" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                <span class="ml-3 block text-sm font-medium text-gray-700">Papelão (Pro)</span>
+                            </label>
+                        </div>
+                    </fieldset>
                 </div>
+                
+                <!-- Upload de Ficheiros -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="schema-file" class="block text-sm font-medium text-gray-700">1. Ficheiro de Schema (.json)</label>
+                        <input type="file" id="schema-file" required accept=".json" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    </div>
+                    <div>
+                        <label for="pdf-files" class="block text-sm font-medium text-gray-700">2. Ficheiros PDF (múltiplos)</label>
+                        <input type="file" id="pdf-files" required accept=".pdf" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    </div>
+                </div>
+                
+                <!-- Ficheiro de Referência Opcional -->
                 <div>
-                    <label for="pdf-files" class="block text-sm font-medium text-gray-700">2. Ficheiros PDF (múltiplos)</label>
-                    <input type="file" id="pdf-files" accept=".pdf" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <label for="reference-file" class="block text-sm font-medium text-gray-700">3. Ficheiro de Referência (Opcional para Avaliação)</label>
+                    <input type="file" id="reference-file" accept=".json" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100 cursor-pointer">
+                </div>
+
+                <div id="file-list" class="text-xs text-gray-500 space-y-1 hidden">
+                    <p id="schema-file-name" class="font-medium"></p>
+                    <p id="pdf-file-names"></p>
+                </div>
+
+                <!-- Botão de Extração -->
+                <div class="pt-2">
+                    <button type="button" id="extract-btn" class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                        Iniciar Extração
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Gerenciamento de Memória -->
+            <div class="pt-4 border-t border-gray-200">
+                <h3 class="text-lg font-medium text-gray-700 mb-3">Gerenciamento</h3>
+                <div class="flex flex-wrap gap-4">
+                    <button id="clear-memory-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Limpar Memória</button>
+                    <button id="download-memory-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">Baixar Memória</button>
+                    
+                    <label for="load-memory-input" class="file-input-label bg-green-600 text-white hover:bg-green-700">Carregar Memória</label>
+                    <input type="file" id="load-memory-input" accept=".json" class="file-input-hidden">
+                    
+                    <button id="logout-btn" class="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 ml-auto">Encerrar Sessão</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 
+          TELA 3: PROGRESSO (AGORA É REAL-TIME)
+        -->
+        <div id="screen-progress" class="hidden space-y-6 py-12">
+            
+            <div class="flex justify-center items-center space-x-3">
+                <div class="spinner w-8 h-8 border-4 border-blue-600 rounded-full"></div>
+                <h2 class="text-2xl font-semibold text-gray-800">A processar...</h2>
+            </div>
+            
+            <!-- Barra de Progresso -->
+            <div>
+                <p id="progress-text" class="text-gray-600 text-center mb-2">Processando 0 / 0 arquivos...</p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Log de Processamento -->
+            <div id="progress-log-container" class="w-full h-40 bg-gray-900 text-gray-300 text-sm font-mono p-4 rounded-md overflow-y-auto">
+                <p class="text-gray-500">A iniciar conexão WebSocket...</p>
+                <!-- Log será preenchido aqui -->
+            </div>
+
+            <button id="cancel-btn" class="mt-6 mx-auto block px-6 py-2 border border-gray-300 text-base font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+                Cancelar
+            </button>
+        </div>
+
+
+        <!-- 
+          TELA 4: RESULTADOS
+        -->
+        <div id="screen-results" class="hidden space-y-6">
+            <h2 class="text-2xl font-semibold text-gray-800">Resultados da Extração</h2>
+            
+            <!-- Secção de Métricas e Avaliação -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Métricas de Execução</h3>
+                    <div id="metrics-output" class="text-sm text-gray-700 space-y-1">
+                        <p><strong>Tempo Total (Síncrono):</strong> <span id="metric-sync-time">...</span></p>
+                        <p><strong>Chamadas de LLM (Total):</strong> <span id="metric-llm-calls">...</span></p>
+                        <p><strong>Tokens de LLM (Total):</strong> <span id="metric-llm-tokens">...</span></p>
+                    </div>
+                </div>
+                <div id="report-container" class="bg-blue-50 p-4 rounded-lg shadow-inner hidden">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-2">Relatório de Avaliação</h3>
+                    <div id="report-output" class="text-sm text-blue-800 space-y-1">
+                        <p><strong>Acurácia Geral:</strong> <span id="metric-accuracy">...</span></p>
+                        <p><strong>Corretos / Total:</strong> <span id="metric-correct-fields">...</span></p>
+                    </div>
                 </div>
             </div>
 
-            <!-- MUDANÇA: Ficheiro de Referência Opcional -->
-            <div>
-                <label for="reference-file" class="block text-sm font-medium text-gray-700">3. Ficheiro de Referência (Opcional)</label>
-                <input type="file" id="reference-file" accept=".json" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100 cursor-pointer">
-                <p class="text-xs text-gray-500 mt-1">Envie um "ground truth" (no formato `results/teste.json`) para gerar um relatório de acurácia.</p>
+            <!-- Botões de Download -->
+            <div class="flex flex-wrap gap-4">
+                <button id="download-results-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Baixar Dados Extraídos (JSON)</button>
+                <button id="download-report-btn" class="px-4 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 hidden">Baixar Relatório de Teste (JSON)</button>
+                <button id="back-to-main-btn" class="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 ml-auto">Nova Extração</button>
             </div>
 
-            <div id="file-list" class="text-xs text-gray-500 space-y-1 hidden">
-                <p id="schema-file-name" class="font-medium"></p>
-                <p id="pdf-file-names"></p>
-            </div>
+            <!-- Filtro e Visualização de Cards -->
+            <div class="pt-4 border-t border-gray-200">
+                <div class="mb-4">
+                    <label for="filter-input" class="block text-sm font-medium text-gray-700">Filtrar por nome do PDF</label>
+                    <input type="text" id="filter-input" placeholder="ex: oab_1.pdf" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <!-- Contentor dos Cards -->
+                <div id="results-cards-container" class="space-y-4 max-h-96 overflow-y-auto p-2 bg-gray-50 rounded">
+                    <!-- Cards serão injetados aqui -->
+                </div>
 
-            <div class="pt-2 space-y-3">
-                <div id="message-area" class="text-sm rounded-md p-3 hidden"></div>
-                <button type="submit" id="extract-btn" class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
-                    <span id="btn-text">Extrair e Avaliar</span>
-                    <div id="btn-spinner" class="spinner w-5 h-5 ml-3 border-2 border-white rounded-full hidden"></div>
-                </button>
-            </div>
-        </form>
-
-        <!-- Área de Resultados (MODIFICADA) -->
-        <div id="results-container" class="mt-8 hidden space-y-6">
-            
-            <!-- Relatório de Avaliação -->
-            <div id="report-container" class="hidden">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-2">Relatório de Avaliação</h2>
-                <div class="bg-blue-50 p-4 rounded-lg shadow-inner">
-                    <pre class="text-sm text-blue-900"><code id="report-output"></code></pre>
+                <!-- Visualizador de JSON (ao clicar no card) -->
+                <div id="json-viewer-container" class="mt-4 hidden">
+                    <h4 class="text-md font-semibold text-gray-800 mb-2">Dados do Card Selecionado:</h4>
+                    <pre class="bg-gray-900 text-green-400 text-sm p-4 rounded-md overflow-x-auto h-64"><code id="json-viewer-output">...</code></pre>
                 </div>
             </div>
-            
-            <!-- Resultados Brutos da Extração -->
-            <div>
-                <h2 class="text-xl font-semibold text-gray-800 mb-2">Resultados da Extração (Raw)</h2>
-                <pre class="bg-gray-900 text-green-400 text-sm p-4 rounded-md overflow-x-auto h-64"><code id="results-output">...</code></pre>
-            </div>
+
         </div>
     </div>
 
     <script>
-        // --- Selecionar Elementos do DOM ---
-        const uploadForm = document.getElementById('upload-form');
-        const apiKeyInput = document.getElementById('api-key');
-        const schemaFileInput = document.getElementById('schema-file');
-        const pdfFilesInput = document.getElementById('pdf-files');
-        const referenceFileInput = document.getElementById('reference-file'); // <-- NOVO
-        const extractBtn = document.getElementById('extract-btn');
-        const btnText = document.getElementById('btn-text');
-        const btnSpinner = document.getElementById('btn-spinner');
+        // --- Estado Global da Aplicação ---
+        let GLOBAL_API_KEY = localStorage.getItem('PAPELADA_API_KEY') || '';
+        let websocket = null;
+        let lastExtractionResults = [];
+        let lastEvaluationReport = null;
+        let totalFilesToProcess = 0;
+
+        // --- Seletores do DOM ---
+        const screens = {
+            config: document.getElementById('screen-config'),
+            main: document.getElementById('screen-main'),
+            progress: document.getElementById('screen-progress'),
+            results: document.getElementById('screen-results'),
+        };
         const messageArea = document.getElementById('message-area');
         
+        // Tela de Config
+        const apiKeyInput = document.getElementById('api-key');
+        const configSaveBtn = document.getElementById('config-save-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Tela Principal
+        const schemaFileInput = document.getElementById('schema-file');
+        const pdfFilesInput = document.getElementById('pdf-files');
+        const referenceFileInput = document.getElementById('reference-file');
+        const extractBtn = document.getElementById('extract-btn');
         const fileListDiv = document.getElementById('file-list');
         const schemaFileName = document.getElementById('schema-file-name');
         const pdfFileNames = document.getElementById('pdf-file-names');
+        
+        // Botões de Memória
+        const clearMemoryBtn = document.getElementById('clear-memory-btn');
+        const downloadMemoryBtn = document.getElementById('download-memory-btn');
+        const loadMemoryInput = document.getElementById('load-memory-input');
 
-        // Contéineres de Resultado
-        const resultsContainer = document.getElementById('results-container');
-        const reportContainer = document.getElementById('report-container'); // <-- NOVO
-        const reportOutput = document.getElementById('report-output'); // <-- NOVO
-        const resultsOutput = document.getElementById('results-output');
+        // Tela de Progresso
+        const progressText = document.getElementById('progress-text');
+        const progressBar = document.getElementById('progress-bar');
+        const progressLogContainer = document.getElementById('progress-log-container');
+        const cancelBtn = document.getElementById('cancel-btn');
 
-        const API_URL = "http://127.0.0.1:8000/extract/";
+        // Tela de Resultados
+        const reportContainer = document.getElementById('report-container');
+        const metricSyncTime = document.getElementById('metric-sync-time');
+        const metricLlmCalls = document.getElementById('metric-llm-calls');
+        const metricLlmTokens = document.getElementById('metric-llm-tokens');
+        const metricAccuracy = document.getElementById('metric-accuracy');
+        const metricCorrectFields = document.getElementById('metric-correct-fields');
+        const downloadResultsBtn = document.getElementById('download-results-btn');
+        const downloadReportBtn = document.getElementById('download-report-btn');
+        const backToMainBtn = document.getElementById('back-to-main-btn');
+        const filterInput = document.getElementById('filter-input');
+        const resultsCardsContainer = document.getElementById('results-cards-container');
+        const jsonViewerContainer = document.getElementById('json-viewer-container');
+        const jsonViewerOutput = document.getElementById('json-viewer-output');
 
-        // --- Lógica de Feedback (Inalterada) ---
+        const API_URL = "127.0.0.1:8000"; // WebSocket usa URL sem http
+
+        // --- Funções de Navegação e UI ---
+        
+        function navigateTo(screenId) {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            if (screens[screenId]) {
+                screens[screenId].classList.remove('hidden');
+            }
+            messageArea.classList.add('hidden'); // Limpa mensagens ao navegar
+        }
+
+        function showMessage(message, type = "error") {
+            messageArea.textContent = message;
+            if (type === "error") {
+                messageArea.className = "text-sm rounded-md p-3 mb-4 bg-red-100 text-red-800";
+            } else {
+                messageArea.className = "text-sm rounded-md p-3 mb-4 bg-green-100 text-green-800";
+            }
+        }
+
+        function logToProgress(message, isError = false) {
+            const entry = document.createElement('p');
+            if (isError) {
+                entry.className = "text-red-400";
+                entry.innerHTML = `[ERRO] ${message}`;
+            } else {
+                entry.innerHTML = `${message}`;
+            }
+            progressLogContainer.appendChild(entry);
+            progressLogContainer.scrollTop = progressLogContainer.scrollHeight;
+        }
+
+        // --- Lógica de Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (GLOBAL_API_KEY) {
+                apiKeyInput.value = GLOBAL_API_KEY;
+                navigateTo('main');
+            } else {
+                navigateTo('config');
+            }
+        });
+
+        // --- Lógica da Tela de Configuração ---
+        
+        configSaveBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (!key) {
+                showMessage("Por favor, insira uma Chave de API.", "error");
+                return;
+            }
+            GLOBAL_API_KEY = key;
+            localStorage.setItem('PAPELADA_API_KEY', key);
+            navigateTo('main');
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            if (confirm("Tem certeza que deseja encerrar a sessão? Sua chave de API será removida.")) {
+                GLOBAL_API_KEY = '';
+                localStorage.removeItem('PAPELADA_API_KEY');
+                apiKeyInput.value = '';
+                navigateTo('config');
+            }
+        });
+
+        // --- Lógica da Tela Principal (Upload) ---
+
+        // Feedback de ficheiros (inalterado)
         schemaFileInput.addEventListener('change', () => {
             if (schemaFileInput.files.length > 0) {
                 schemaFileName.textContent = `Schema: ${schemaFileInput.files[0].name}`;
@@ -115,98 +339,374 @@
                 fileListDiv.classList.remove('hidden');
             }
         });
-
-        // --- Lógica de Submissão (MODIFICADA) ---
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-            
-            const apiKey = apiKeyInput.value;
+        
+        // --- LÓGICA DE SUBMISSÃO (WEBSOCKET) ---
+        
+        extractBtn.addEventListener('click', async () => {
             const schemaFile = schemaFileInput.files[0];
             const pdfFiles = pdfFilesInput.files;
-            const referenceFile = referenceFileInput.files[0]; // <-- NOVO
+            const referenceFile = referenceFileInput.files[0];
+            const selectedMode = document.querySelector('input[name="execution-mode"]:checked').value;
 
             // 1. Validação
-            if (!apiKey || !schemaFile || pdfFiles.length === 0) {
+            if (!GLOBAL_API_KEY || !schemaFile || pdfFiles.length === 0) {
                 showMessage("Por favor, preencha a chave da API, selecione um schema e pelo menos um PDF.", "error");
                 return;
             }
-
-            // 2. Preparar Estado de Carregamento
-            setLoading(true);
-
-            // 3. Construir o FormData
-            const formData = new FormData();
-            formData.append("extraction_schema", schemaFile);
-            for (let i = 0; i < pdfFiles.length; i++) {
-                formData.append("pdf_files", pdfFiles[i]);
-            }
-            if (referenceFile) { // <-- NOVO
-                formData.append("reference_data", referenceFile);
-            }
-
-            // 4. Fazer a Chamada à API
+            
+            // 2. Resetar estado e ir para tela de progresso
+            lastExtractionResults = [];
+            lastEvaluationReport = null;
+            totalFilesToProcess = 0; // Será definido pelo número de schemas
+            
+            // Tenta ler o schema para saber o total de ficheiros
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {'X-API-Key': apiKey},
-                    body: formData
-                });
+                const schemaContent = await schemaFile.text();
+                const schemaJson = JSON.parse(schemaContent);
+                totalFilesToProcess = Array.isArray(schemaJson) ? schemaJson.length : 0;
+            } catch(e) {
+                showMessage("Erro ao ler o ficheiro de schema. É um JSON válido?", "error");
+                return;
+            }
+            
+            progressBar.style.width = '0%';
+            progressText.textContent = `Processando 0 / ${totalFilesToProcess} arquivos...`;
+            progressLogContainer.innerHTML = '<p class="text-gray-500">A iniciar conexão WebSocket...</p>';
+            navigateTo('progress');
 
-                const data = await response.json(); // 'data' é agora {extraction_results: [...], evaluation_report: {...}}
+            // 3. Iniciar Conexão WebSocket
+            if (websocket) { websocket.close(); }
+            websocket = new WebSocket(`ws://${API_URL}/ws/extract_live/`);
 
-                if (!response.ok) {
-                    throw new Error(data.detail || `Erro ${response.status}`);
-                }
-
-                // 5. Sucesso (MODIFICADO)
-                showMessage("Extração concluída com sucesso!", "success");
+            // 4. Definir Handlers do WebSocket
+            
+            websocket.onopen = async () => {
+                logToProgress("Conexão estabelecida. A ler e enviar ficheiros...");
                 
-                // Mostra os resultados brutos
-                resultsOutput.textContent = JSON.stringify(data.extraction_results, null, 2);
-                resultsContainer.classList.remove('hidden');
+                try {
+                    // Ler todos os ficheiros como Base64
+                    const schemaB64 = await readFileAsBase64(schemaFile);
+                    const pdfsB64 = await Promise.all(
+                        Array.from(pdfFiles).map(file => readFileAsBase64(file))
+                    );
+                    let refB64 = null;
+                    if (referenceFile) {
+                        refB64 = await readFileAsBase64(referenceFile);
+                    }
 
-                // Mostra o relatório de avaliação SE ele existir
-                if (data.evaluation_report) {
-                    reportOutput.textContent = JSON.stringify(data.evaluation_report, null, 2);
-                    reportContainer.classList.remove('hidden');
-                } else {
-                    reportContainer.classList.add('hidden');
+                    // Enviar a mensagem de configuração
+                    const configMessage = {
+                        api_key: GLOBAL_API_KEY,
+                        mode: selectedMode,
+                        schema_file: { name: schemaFile.name, content: schemaB64.content },
+                        pdf_files: pdfsB64.map((pdf, i) => ({ name: pdfFiles[i].name, content: pdf.content })),
+                        reference_file: refB64 ? { name: referenceFile.name, content: refB64.content } : null
+                    };
+                    
+                    websocket.send(JSON.stringify(configMessage));
+                    logToProgress("Ficheiros enviados. A aguardar processamento do backend...");
+                    
+                } catch (err) {
+                    logToProgress(`Erro ao ler ficheiros: ${err.message}`, true);
+                    websocket.close();
                 }
+            };
+            
+            // --- MUDANÇA PRINCIPAL NO HANDLER DE MENSAGENS ---
+            websocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                switch(data.type) {
+                    case 'status':
+                        logToProgress(`[BACKEND] ${data.message}`);
+                        break;
+                    
+                    case 'progress':
+                        const result = data.result;
+                        lastExtractionResults.push(result);
+                        
+                        const percent = (lastExtractionResults.length / totalFilesToProcess) * 100;
+                        progressBar.style.width = `${percent > 100 ? 100 : percent}%`;
+                        progressText.textContent = `Processando ${lastExtractionResults.length} / ${totalFilesToProcess} arquivos...`;
+                        
+                        logToProgress(`[OK] <strong>${result.pdf_path}</strong> processado em <strong>${result.sync_data_time_s}s</strong>`);
+                        break;
+                    
+                    case 'extraction_complete':
+                        // A EXTRAÇÃO TERMINOU! MUDAR DE TELA
+                        logToProgress("Extração concluída! A carregar tela de resultados...");
+                        lastExtractionResults = data.results; // Atualiza com a lista completa e final
+                        processResults(); // Processa os dados iniciais
+                        navigateTo('results');
+                        break;
+                        
+                    case 'evaluation_complete':
+                        // A AVALIAÇÃO TERMINOU! ATUALIZAR A TELA DE RESULTADOS
+                        logToProgress("Relatório de avaliação recebido.");
+                        lastEvaluationReport = data.evaluation_report;
+                        updateEvaluationUI(lastEvaluationReport); // Atualiza a UI
+                        break;
+                        
+                    case 'learning_complete':
+                        logToProgress("Aprendizado em segundo plano concluído. Memória salva.");
+                        // Mostra uma notificação na tela de resultados
+                        showMessage("Aprendizado em segundo plano concluído. Memória atualizada.", "success");
+                        break;
+                        
+                    case 'all_processes_complete':
+                        logToProgress("Todos os processos do servidor concluídos.");
+                        websocket.close(1000, "Trabalho concluído");
+                        break;
+                        
+                    case 'error':
+                        logToProgress(data.message, true);
+                        showMessage(data.message, "error");
+                        navigateTo('main'); // Volta para a tela principal em caso de erro
+                        if (websocket) websocket.close();
+                        break;
+                }
+            };
+            
+            websocket.onerror = () => {
+                logToProgress("Erro na conexão WebSocket. Verifique se o servidor está a rodar.", true);
+                showMessage("Erro na conexão WebSocket.", "error");
+                navigateTo('main');
+            };
+            
+            websocket.onclose = (event) => {
+                logToProgress(`Conexão WebSocket fechada (Cód: ${event.code}).`);
+                websocket = null;
+            };
+        });
+        
+        // Função auxiliar para ler ficheiros como Base64
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve({ name: file.name, content: reader.result });
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(file); // Retorna base64 com Data-URL
+            });
+        }
 
-            } catch (error) {
-                // 6. Falha
-                console.error("Falha na extração:", error);
-                showMessage(`Erro: ${error.message}`, "error");
-                resultsContainer.classList.add('hidden');
-                reportContainer.classList.add('hidden');
-            } finally {
-                // 7. Limpar Estado de Carregamento
-                setLoading(false);
+
+        // --- Lógica da Tela de Progresso ---
+        cancelBtn.addEventListener('click', () => {
+            if (websocket) {
+                websocket.close(1000, "Cancelado pelo usuário"); // 1000 = Normal Closure
+                navigateTo('main');
             }
         });
 
-        // --- Funções Auxiliares (Inalteradas) ---
-        function setLoading(isLoading) {
-            if (isLoading) {
-                extractBtn.disabled = true;
-                btnText.textContent = "A processar...";
-                btnSpinner.classList.remove('hidden');
-                messageArea.classList.add('hidden');
-            } else {
-                extractBtn.disabled = false;
-                btnText.textContent = "Extrair e Avaliar";
-                btnSpinner.classList.add('hidden');
+        // --- Lógica da Tela de Resultados ---
+        
+        // Esta função agora SÓ processa os dados de extração
+        function processResults() {
+            // Limpa containers
+            resultsCardsContainer.innerHTML = '';
+            jsonViewerContainer.classList.add('hidden');
+            filterInput.value = '';
+
+            // Reseta a UI de avaliação (será preenchida depois)
+            reportContainer.classList.add('hidden');
+            downloadReportBtn.classList.add('hidden');
+            metricAccuracy.textContent = 'Aguardando...';
+            metricCorrectFields.textContent = '...';
+
+            // 1. Renderizar Métricas de Extração
+            let totalSyncTime = 0;
+            let totalCalls = 0;
+            let totalTokens = 0;
+
+            lastExtractionResults.forEach(res => {
+                totalSyncTime += res.sync_data_time_s || 0;
+                // As métricas de LLM estão agora dentro de 'metrics'
+                totalCalls += (res.metrics?.llm_data_calls || 0) + (res.metrics?.llm_regex_calls || 0);
+                totalTokens += (res.metrics?.llm_data_tokens || 0) + (res.metrics?.llm_regex_tokens || 0);
+            });
+
+            metricSyncTime.textContent = `${totalSyncTime.toFixed(3)}s`;
+            metricLlmCalls.textContent = totalCalls;
+            metricLlmTokens.textContent = totalTokens;
+            
+            // 2. Renderizar Cards
+            renderResultCards(lastExtractionResults);
+        }
+        
+        // NOVA Função para atualizar a UI de avaliação dinamicamente
+        function updateEvaluationUI(report) {
+            if (!report || report.error) {
+                metricAccuracy.textContent = 'Falhou';
+                metricCorrectFields.textContent = 'Erro ao gerar';
+                reportContainer.classList.remove('hidden'); // Mostra para indicar o erro
+                downloadReportBtn.classList.add('hidden');
+                return;
+            }
+            const summary = report.accuracy_summary;
+            metricAccuracy.textContent = summary.overall_accuracy;
+            metricCorrectFields.textContent = `${summary.correct_fields} / ${summary.total_fields}`;
+            reportContainer.classList.remove('hidden');
+            downloadReportBtn.classList.remove('hidden');
+        }
+
+        function renderResultCards(results) {
+            resultsCardsContainer.innerHTML = ''; // Limpa
+            
+            if (results.length === 0) {
+                 resultsCardsContainer.innerHTML = '<p class="text-gray-500">Nenhum dado extraído.</p>';
+                 return;
+            }
+
+            const filterText = filterInput.value.toLowerCase();
+            
+            results.forEach((result, index) => {
+                const pdfName = result.pdf_path;
+                
+                if (filterText && !pdfName.toLowerCase().includes(filterText)) {
+                    return; // Pula este card se não corresponder ao filtro
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card flex justify-between items-center';
+                card.innerHTML = `
+                    <div>
+                        <strong class="text-blue-700">${pdfName}</strong>
+                        <p class="text-sm text-gray-500">Label: ${result.label} | Tempo Síncrono: ${result.sync_data_time_s}s</p>
+                    </div>
+                    <button class="view-json-btn px-3 py-1 text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-800" data-index="${index}">
+                        Ver JSON
+                    </button>
+                `;
+                resultsCardsContainer.appendChild(card);
+            });
+
+            // Adiciona listeners aos novos botões "Ver JSON"
+            document.querySelectorAll('.view-json-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index, 10);
+                    const selectedData = lastExtractionResults[index];
+                    jsonViewerOutput.textContent = JSON.stringify(selectedData, null, 2);
+                    jsonViewerContainer.classList.remove('hidden');
+                });
+            });
+        }
+        
+        // Filtro
+        filterInput.addEventListener('input', () => {
+            renderResultCards(lastExtractionResults);
+        });
+        
+        // Botões de Download
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        downloadResultsBtn.addEventListener('click', () => {
+            downloadJSON(lastExtractionResults, 'extraction_results.json');
+        });
+        
+        downloadReportBtn.addEventListener('click', () => {
+            downloadJSON(lastEvaluationReport, 'evaluation_report.json');
+        });
+
+        // Voltar
+        backToMainBtn.addEventListener('click', () => {
+            // Limpa os campos de ficheiros ao voltar
+            schemaFileInput.value = null;
+            pdfFilesInput.value = null;
+            referenceFileInput.value = null;
+            fileListDiv.classList.add('hidden');
+            schemaFileName.textContent = '';
+            pdfFileNames.textContent = '';
+            
+            navigateTo('main');
+        });
+
+
+        // --- Lógica de Gerenciamento de Memória (HTTP - Inalterada) ---
+
+        async function makeApiCall(url, method, body = null, isJson = false) {
+            try {
+                const options = {
+                    method: method,
+                    headers: { 'X-API-Key': GLOBAL_API_KEY },
+                };
+                if (body) {
+                    options.body = body;
+                    if (isJson) {
+                         options.headers['Content-Type'] = 'application/json';
+                    }
+                }
+                
+                const response = await fetch(url, options);
+                
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || `Erro ${response.status}`);
+                }
+
+                if (url.includes('/download/')) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = "memory.json";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    return { message: "Memória baixada com sucesso." };
+                }
+
+                return await response.json();
+                
+            } catch (error) {
+                console.error(`Falha na API [${method} ${url}]:`, error);
+                showMessage(`Erro: ${error.message}`, "error");
+                return null;
             }
         }
-        function showMessage(message, type = "error") {
-            messageArea.textContent = message;
-            if (type === "error") {
-                messageArea.className = "text-sm rounded-md p-3 bg-red-100 text-red-800";
-            } else {
-                messageArea.className = "text-sm rounded-md p-3 bg-green-100 text-green-800";
+        
+        clearMemoryBtn.addEventListener('click', async () => {
+            if (confirm("Tem certeza que deseja apagar TODA a memória de regex? Esta ação é irreversível.")) {
+                const result = await makeApiCall(`http://${API_URL}/memory/`, 'DELETE');
+                if (result) {
+                    showMessage("Memória limpa com sucesso!", "success");
+                }
             }
-            messageArea.classList.remove('hidden');
-        }
+        });
+        
+        downloadMemoryBtn.addEventListener('click', async () => {
+             const result = await makeApiCall(`http://${API_URL}/memory/download/`, 'GET');
+             if(result) {
+                 showMessage(result.message, "success");
+             }
+        });
+        
+        loadMemoryInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (confirm(`Tem certeza que deseja substituir a memória atual pelo ficheiro '${file.name}'?`)) {
+                const formData = new FormData();
+                formData.append("memory_file", file);
+                
+                const result = await makeApiCall(`http://${API_URL}/memory/upload/`, 'POST', formData);
+                if (result) {
+                    showMessage(result.message, "success");
+                }
+            }
+            e.target.value = null; 
+        });
+
     </script>
 </body>
 </html>

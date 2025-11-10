@@ -1,8 +1,1 @@
-{
-  "carteira_oab": {
-    "nome": "(?:^|\\b)\\s*([A-ZÀ-Ÿ][A-ZÀ-Ÿ\\s]+?)\\s*(?:\\r?\\n|Inscrição|Endereco|Telefone|SITUAÇÃO|$)",
-    "inscricao": "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?(\\d+)(?=\\s+[A-Z]{2}\\s+CONSELHO|\\s*$)",
-    "categoria": "^(?:[\\s\\S]*?\\n)?\\s*\\b(?:Inscrição Seccional Subseção|CONSELHO SECCIONAL - PARANÁ)?\\s*[\\s\\S]*?\\b(ADVOGADO|ADVOGADA|SUPLEMENTAR|ESTAGIARIO|ESTAGIARIA)\\b"
-  },
-  "tela_sistema": {}
-}
+{}

@@ -1,29 +1,27 @@
 {
-    "normalization_options": {
-                "flat": false,
-                "lowercase": false,
-                "accents": false
+  "normalization_options": {
+    "flat": false,
+    "lowercase": false,
+    "accents": false
+  },
+  "memory_file": "data/memory.json",
+  "mode": "smart",
+  "clean_memory_on_start": true,
+  "output_filename": "teste.json",
+  "llm": {
+    "model_name": "gpt-5-mini",
+    "prompt_file": "prompt_templates.json",
+    "regex_extr_": {
+      "task": "regex",
+      "prompt": "pt_data_long_prompt_trust_reasoning",
+      "reasoning": 0,
+      "temperature": 0.2
     },
-    "memory_file": "data/memory.json",
-    "mode": "smart",
-    "clean_memory_on_start": true,
-    "output_filename":"teste.json",
-    "llm": {        
-        "model_name": "gpt-5-mini",
-        "prompt_file": "prompt_templates.json",
-        "regex_extr_":{
-            "task": "regex", 
-            "prompt": "pt_data_long_prompt_trust_reasoning",
-            "reasoning": 0,
-            "temperature":0.2
-        } ,
-        "data_extr_": 
-            {
-                "task": "data", 
-                "prompt": "pt_regex_short_prompt_trust",
-                "reasoning": 0,
-                "temperature":0.2
-            }
+    "data_extr_": {
+      "task": "data",
+      "prompt": "pt_regex_short_prompt_trust",
+      "reasoning": 0,
+      "temperature": 0.2
     }
-    
+  }
 }
