@@ -1,6 +1,7 @@
 openai
 python-dotenv
 pdfplumber
-fastapi "uvicorn[standard]" 
+fastapi 
+uvicorn[standard]
 python-multipart
 websockets

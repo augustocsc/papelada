@@ -1,0 +1,13 @@
+{
+  "carteira_oab": {
+    "nome": "(?m)^\\s*([A-ZÀ-Ÿ\\s]+)\\s*(?:\\r?\\n)",
+    "inscricao": "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\b([\\d]+)\\b",
+    "seccional": "Inscrição\\s*Seccional\\s*Subseção[\\s\\S]*?\\b([A-Z]{2})\\b",
+    "categoria": "\\bCONSELHO SECCIONAL - PARANÁ[\\s\\S]*?\\b([A-Z]+)\\b(?=\\nEndereço)",
+    "situacao": "Telefone\\s*Profissional[\\s\\S]*?\\b([A-ZÀ-Ÿ\\s]+)\\b",
+    "subsecao": "CONSELHO\\s+SECCIONAL\\s*-[\\s\\S]*?\\b([A-Za-zÁ-Ýá-ý\\s]+?)\\b\\s*(?:SUPLEMENTAR|SITUAÇÃO|$)"
+  },
+  "tela_sistema": {
+    "sistema": "Sistema\\s*[:]?\\s*[\\s\\S]*?(CONSIGNADO)"
+  }
+}
