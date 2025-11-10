@@ -4,8 +4,7 @@ import json
 from openai import OpenAIError
 
 class LLMExtractor:
-    # ... (o __init__ permanece o mesmo) ...
-    def __init__(self, cfg: dict, campos_a_extrair: list, text_to_analyze: str, client=None, failed_regexes: list = None):
+    def __init__(self, cfg: dict, campos_a_extrair: list, text_to_analyze: str, client=None): 
         self.model_name = cfg['model_name']
 
         if client is None:
@@ -14,7 +13,6 @@ class LLMExtractor:
         
         self.campos_a_extrair = campos_a_extrair
         self.text_to_analyze = text_to_analyze
-        self.failed_regexes = failed_regexes if failed_regexes is not None else [] 
         
         self.data_extr_ = cfg.get("data_extr_", {}).copy()
         self.regex_extr_ = cfg.get("regex_extr_", {}).copy()
@@ -37,7 +35,6 @@ class LLMExtractor:
                 else: config[key] = map_value_to_level(config[key])
 
     def _build_prompt(self, task: dict) -> str:
-        # ... (lógica do _build_prompt permanece a mesma) ...
         if task["task"] == "data":
             try:
                 with open(self.data_extr_['prompt']['prompt'], "r", encoding="utf-8") as f:
@@ -60,25 +57,18 @@ class LLMExtractor:
             except Exception as e:
                 raise Exception(f"Error reading prompt file: {e}")
             
-            failed_regex_str = ""
-            if self.failed_regexes:
-                for entry in self.failed_regexes:
-                    if isinstance(entry, dict) and entry.get('regex'):
-                        failed_regex_str += f"- Regex: `{entry.get('regex')}`\n  - Falha: {entry.get('reason')}\n"
-                    elif isinstance(entry, str):
-                        failed_regex_str += f"- Regex: `{entry}`\n  - Falha: Motivo desconhecido (formato antigo/simples).\n"
-            else:
-                failed_regex_str = "Nenhuma regex falhou anteriormente para este campo."
-            
             return prompt_content.format(
                 schema = self.campos_a_extrair,
-                text=self.text_to_analyze,
-                failed_regexes=failed_regex_str
+                text=self.text_to_analyze
             )
         else:
             raise ValueError(f"Unknown task type: {task['task']}")
 
-    LLM_TIMEOUT = 20.0 
+    # --- MUDANÇA (Req 10s) ---
+    # O timeout da LLM foi aumentado para um valor mais generoso (30s),
+    # já que não está mais preso ao limite de 10s do orquestrador.
+    # Isto dá mais tempo para a geração de regex em background.
+    LLM_TIMEOUT = 30.0 
 
     async def generate_regex_json(self) -> dict:
         """Chama o LLM para gerar a lista JSON e INCLUI DADOS DE USO (tokens)."""
@@ -106,14 +96,13 @@ class LLMExtractor:
             
             json_output_str = response.choices[0].message.content
             json_output = json.loads(json_output_str)
-            usage = response.usage # <-- MUDANÇA: Captura o uso
+            usage = response.usage 
 
             return {
                 "duration": duration,
                 "json_response": json_output,
                 "model_name": self.model_name,
                 "prompt_used": prompt,
-                # MUDANÇA: Adiciona dados de uso ao retorno
                 "usage": {
                     "prompt_tokens": usage.prompt_tokens,
                     "completion_tokens": usage.completion_tokens,
@@ -155,7 +144,7 @@ class LLMExtractor:
             
             json_output_str = response.choices[0].message.content
             json_output = json.loads(json_output_str)
-            usage = response.usage 
+            usage = response.usage
 
             return {
                 "duration": duration,
