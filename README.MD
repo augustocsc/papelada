@@ -71,39 +71,60 @@ A solução é dividida nos seguintes componentes principais:
 
 ## Como Utilizar
 
-A aplicação deve ser executada como um servidor API.
+A aplicação deve ser executada como um servidor API, permitindo o uso tanto via interface gráfica (Frontend) quanto via linha de comando (API).
 
-#### 1\. Instalação:
+### 1\. Instalação e Configuração
 
-Instale as dependências necessárias:
+1.  **Instalação:** Instale as dependências necessárias:
+    ```bash
+    pip install -r requirements.txt
+    ```
+2.  **Configuração:** Crie um arquivo `.env` na raiz do projeto e defina as chaves de API:
+    ```
+    PAPELADA_API_KEY="seu-token-secreto-aqui-123" 
+    OPENAI_API_KEY="sk-..." # Opcional: Se omitido, o usuário deve inserir no frontend.
+    ```
+3.  **Iniciar o Servidor:** Inicie o servidor Uvicorn a partir da raiz do projeto:
+    ```bash
+    uvicorn api_main:app --host 0.0.0.0 --port 8000 --reload
+    ```
+
+### 2\. Uso da Interface Gráfica (UI)
+
+O Frontend oferece uma experiência completa com visualização de resultados e progresso em tempo real.
+
+1.  Abra o arquivo `frontend/index.html` no seu navegador.
+2.  Insira sua chave API e clique em **Iniciar Nova Sessão**.
+3.  Selecione os arquivos (`schema.json` e os PDFs).
+4.  Selecione o **Modo de Execução** (Smart recomendado para aprendizado).
+5.  Clique em **Iniciar Extração** para acompanhar o progresso via WebSocket.
+
+### 3\. Uso da API (Terminal/CLI)
+
+Você pode acionar a extração de dados diretamente, o que é ideal para testes automatizados ou integração.
+
+#### Opção A: Linux, WSL ou Git Bash (Comando `curl` padrão)
+
+Use o `curl` para enviar o corpo `multipart/form-data`. Substitua `SUA_CHAVE_AQUI` pela sua `PAPELADA_API_KEY`.
 
 ```bash
-pip install -r requirements.txt
+curl -X POST "[http://127.0.0.1:8000/extract/](http://127.0.0.1:8000/extract/)" \
+-H "X-API-Key: SUA_CHAVE_AQUI" \
+-F "extraction_schema=@pdfs_para_teste/dataset.json" \
+-F "pdf_files=@pdfs_para_teste/oab_1.pdf" \
+-F "pdf_files=@pdfs_para_teste/oab_2.pdf" \
+# ... e assim por diante para todos os arquivos
 ```
 
-#### 2\. Configuração:
+#### Opção B: Windows PowerShell (Usando `run_test.ps1`)
 
-Crie um arquivo `.env` na raiz do projeto e defina as chaves de API. O frontend irá tentar usar a chave `PAPELADA_API_KEY` por padrão para autenticação.
+Use o script auxiliar `run_test.ps1` que foi criado e salvo no diretório raiz para lidar com a sintaxe complexa do PowerShell (`Invoke-RestMethod`).
 
-```
-PAPELADA_API_KEY=15d3b1c6-ece7-4483-913d-e16c73eb7320"
-OPENAI_API_KEY="sk-..." # Opcional: Se omitido, o usuário deve inserir no frontend.
-```
-
-#### 3\. Execução:
-
-Inicie o servidor Uvicorn a partir da raiz do projeto (usando o comando `uvicorn api_main:app --host 0.0.0.0 --port 8000 --reload`).
-
-#### 4\. Uso (Frontend):
-
-1.  Abra `frontend/index.html` no seu navegador.
-2.  Na tela de configuração, se o `PAPELADA_API_KEY` estiver salvo, clique em **Iniciar Nova Sessão**.
-3.  Selecione os ficheiros (`schema.json` e `pdfs`).
-4.  Selecione o **Modo de Execução** (Smart recomendado para aprendizado).
-5.  Clique em **Iniciar Extração**.
-6.  O progresso será exibido em tempo real, e a tela de resultados aparecerá assim que a extração síncrona for concluída.
+1.  **Edite o arquivo `run_test.ps1` na raiz para definir sua `$API_KEY`.**
+2.  Execute o script no terminal PowerShell:
 
 <!-- end list -->
 
-```
+```powershell
+.\run_test.ps1
 ```
